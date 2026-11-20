@@ -1,0 +1,11 @@
+{
+  "name": "@soheab-com/liquid-glass-navbar",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./navbar.css": "./src/navbar.css"
+  },
+  "files": ["src", "README.md"]
+}
