@@ -2,10 +2,20 @@
 
 A browser component for a floating glass tab bar. It covers the selection lens, drag and release, spring motion, native tap and keyboard selection, and reduced-motion support. The host supplies the tabs, placement, and navigation.
 
-Install from the private GitHub repo at a pinned revision:
+## Preview
+
+| Light | Dark |
+| --- | --- |
+| ![Light navbar with the Overview tab selected](docs/navbar-light.png) | ![Dark navbar with the Overview tab selected](docs/navbar-dark.png) |
+
+![Raised selection lens following a drag toward the Map tab](docs/navbar-drag.png)
+
+## Installation
+
+Install from the private GitHub repo at a pinned revision.
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.1.0'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.1.1'
 ```
 
 The package exports TypeScript source and CSS for use in a bundler. The build machine needs GitHub access to the private repository.

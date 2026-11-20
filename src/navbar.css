@@ -8,7 +8,15 @@
   -webkit-backdrop-filter: blur(24px) saturate(1.65);
   backdrop-filter: blur(24px) saturate(1.65);
 }
-.lg-navbar--enabled button {
+.lg-navbar--enabled > button {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
   min-height: 49px;
   align-content: center;
   border-radius: 999px;
@@ -17,10 +25,11 @@
   font-size: .67rem;
   font-weight: 600;
 }
+.lg-navbar--enabled > button[aria-current="page"] { color: var(--lg-nav-accent, #2152a5); }
 .lg-navbar--enabled svg { width: 22px; height: 22px; }
 .lg-navbar__lens { display: none; }
 .lg-navbar--enabled { touch-action: pan-y; user-select: none; }
-.lg-navbar--enabled button[aria-current="page"]::before { opacity: 0; }
+.lg-navbar.lg-navbar--enabled > button[aria-current="page"]::before { opacity: 0; }
 .lg-navbar--enabled > button { z-index: 1; }
 .lg-navbar--enabled .lg-navbar__lens {
   display: block;

@@ -30,10 +30,12 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, { onSelect, enabled = (
   }
 
   function settle(immediate = false): void {
+    if (signal.aborted) return;
+    const isEnabled = enabled();
+    nav.classList.toggle('lg-navbar--enabled', isEnabled);
     const button = active();
     sizeFor(button);
-    nav.classList.toggle('lg-navbar--enabled', enabled());
-    if (immediate || !enabled()) position.set(button.offsetLeft);
+    if (immediate || !isEnabled) position.set(button.offsetLeft);
     else position.to(button.offsetLeft);
   }
 
@@ -60,8 +62,9 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, { onSelect, enabled = (
   }
 
   nav.addEventListener('pointerdown', (event) => {
-    if (!enabled() || !event.isPrimary || event.button !== 0) return;
+    if (!event.isPrimary || event.button !== 0) return;
     suppressClick = false;
+    if (!enabled() || buttons.length < 2) return;
     gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, dragging: false };
     nav.classList.add('lg-navbar--pressed');
   }, { signal });
@@ -79,7 +82,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, { onSelect, enabled = (
     const button = nearest(event.clientX);
     sizeFor(button);
     const x = event.clientX - nav.getBoundingClientRect().left - nav.clientLeft - button.offsetWidth / 2;
-    position.set(Math.max(buttons[0].offsetLeft, Math.min(buttons[buttons.length - 1].offsetLeft, x)));
+    const edges = buttons.map((item) => item.offsetLeft);
+    position.set(Math.max(Math.min(...edges), Math.min(Math.max(...edges), x)));
     buttons.forEach((item) => item.classList.toggle('lg-navbar__preview', item === button));
   }, { passive: true, signal });
   window.addEventListener('pointerup', (event) => end(event), { signal });
