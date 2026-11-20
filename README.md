@@ -90,3 +90,7 @@ npm run demo
 ```
 
 Open `http://127.0.0.1:4173/examples/`. The controls let you change options without editing code.
+
+## Disclaimer
+
+Not affiliated with or endorsed by Apple Inc. Apple and iOS are trademarks of Apple Inc. Liquid Glass is the name Apple uses for its design style. This is an independent take on the look.
