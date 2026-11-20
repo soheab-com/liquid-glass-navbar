@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liquid Glass Navbar examples</title>
+<link rel="stylesheet" href="../src/navbar.css">
+<link rel="stylesheet" href="./demo.css">
+<body>
+  <main>
+    <h1>Liquid Glass Navbar</h1>
+    <p id="caption"></p>
+    <form id="controls">
+      <label>Position <select id="position"><option>top</option><option selected>bottom</option><option>left</option><option>right</option></select></label>
+      <label><input id="groups" type="checkbox" checked> Separate sections</label>
+      <label><input id="labels" type="checkbox" checked> Show labels</label>
+      <label><input id="map-icon" type="checkbox" checked> Show Map icon</label>
+      <label><input id="map-label" type="checkbox" checked> Show Map label</label>
+      <label>Background <select id="background"><option value="">Theme</option><option value="#adc9ef">Solid</option><option value="linear-gradient(135deg,#aacaef,#e3b9ed)">Gradient</option></select></label>
+      <label>Transparency <input id="transparency" type="range" min="0" max="100" value="40"> <output id="transparency-value">40%</output></label>
+      <label><input id="reorder" type="checkbox"> Drag to reorder</label>
+      <button type="button" id="reverse">Reverse main section</button>
+      <p id="status" aria-live="polite"></p>
+    </form>
+  </main>
+  <nav id="example-navbar" aria-label="Example navigation"></nav>
+  <script type="module" src="./demo.js"></script>
+</body>
+</html>

@@ -1,11 +1,22 @@
 {
   "name": "@soheab-com/liquid-glass-navbar",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./navbar.css": "./src/navbar.css"
   },
-  "files": ["src", "README.md"]
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "check": "tsc --noEmit --strict --target es2024 --lib es2024,dom,dom.iterable --module esnext --moduleResolution bundler src/index.ts examples/demo.ts",
+    "demo": "esbuild examples/demo.ts --bundle --format=esm --outfile=examples/demo.js --servedir=. --serve=127.0.0.1:4173"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.1",
+    "typescript": "5.9.3"
+  }
 }
