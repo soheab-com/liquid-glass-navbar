@@ -18,11 +18,11 @@ p { margin: 9px 0; }
   display: grid;
   align-content: center;
   justify-items: center;
-  flex: 0 1 78px;
+  flex: 0 0 auto;
   gap: 4px;
-  min-width: 53px;
+  min-width: 78px;
   min-height: 51px;
-  padding: 5px 8px;
+  padding: 5px 12px;
   font: 650 .78rem system-ui, sans-serif;
   white-space: nowrap;
 }
