@@ -71,7 +71,7 @@ const navbar = mountLiquidGlassNavbar(nav, {
 | Feature | API or markup |
 | --- | --- |
 | Position | Pass `position: 'top' \| 'bottom' \| 'left' \| 'right'` or call `setPosition(edge)`. Omit it to use your own layout. |
-| Selection | Mark the current tab with `aria-current="page"`. Call `sync()` after updating selection, availability, or theme. Actions use `data-navbar-action` and do not change the current tab. |
+| Selection | Mark the current tab with `aria-current="page"`. Call `sync()` after updating selection, availability, or theme. Actions use `data-navbar-action` and do not change the current tab. A swipe can end on an action: releasing there calls `onAction` and the lens returns to the current tab. |
 | Labels and icons | Use `data-navbar-label` and `data-navbar-icon` on their elements. Either element can be omitted. Supply `aria-label` for icon-only buttons. |
 | Visibility | Use `labels: false` or `setLabels(false)` for the whole bar. For one item, use `setItemVisibility(button, { icon: false, label: false })` or the `data-navbar-hide-icon` and `data-navbar-hide-label` attributes. Hiding both parts removes the item from the layout and drag targets. |
 | Background | Pass `background` or call `setBackground(value)` with a CSS background value, such as a color or gradient. Call with no argument to use the theme's surface again. |

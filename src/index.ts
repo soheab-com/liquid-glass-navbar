@@ -163,7 +163,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   }
 
   function candidates(): HTMLButtonElement[] {
-    return gesture?.draggedItem ? peers(gesture.draggedItem).filter(isAvailable) : tabs();
+    return gesture?.draggedItem ? peers(gesture.draggedItem).filter(isAvailable) : items().filter(isAvailable);
   }
 
   function closest(buttons: HTMLButtonElement[], position: number): HTMLButtonElement | undefined {
@@ -186,6 +186,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     if (target) {
       suppressClick = true;
       if (draggedItem) moveTo(draggedItem, target);
+      else if (isAction(target)) options.onAction?.(target);
       else options.onSelect(target);
     }
     sync();
