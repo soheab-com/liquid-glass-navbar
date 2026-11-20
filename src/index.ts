@@ -8,7 +8,8 @@ export interface ItemVisibility {
 }
 
 export interface LiquidGlassNavbarOptions {
-  onSelect: (button: HTMLButtonElement) => void;
+  onSelect?: (button: HTMLButtonElement) => void;
+  autoSelect?: boolean;
   onAction?: (button: HTMLButtonElement) => void;
   onReorder?: (order: readonly HTMLButtonElement[], section: HTMLElement) => void;
   enabled?: () => boolean;
@@ -162,6 +163,14 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     reorder(order);
   }
 
+  function select(button: HTMLButtonElement): void {
+    if (options.autoSelect !== false) {
+      for (const current of nav.querySelectorAll('[aria-current="page"]')) current.removeAttribute('aria-current');
+      button.setAttribute('aria-current', 'page');
+    }
+    options.onSelect?.(button);
+  }
+
   function candidates(): HTMLButtonElement[] {
     return gesture?.draggedItem ? peers(gesture.draggedItem).filter(isAvailable) : items().filter(isAvailable);
   }
@@ -187,7 +196,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       suppressClick = true;
       if (draggedItem) moveTo(draggedItem, target);
       else if (isAction(target)) options.onAction?.(target);
-      else options.onSelect(target);
+      else select(target);
     }
     sync();
   }
@@ -241,7 +250,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     const button = buttonAt(event);
     if (!button || reorderMode) return;
     if (isAction(button)) options.onAction?.(button);
-    else options.onSelect(button);
+    else select(button);
+    sync();
   }, { signal });
   nav.addEventListener('keydown', (event) => {
     if (!options.reorderable || !event.altKey) return;

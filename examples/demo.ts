@@ -95,10 +95,7 @@ function mount(): void {
     transparency: Number(transparency.value),
     reorderable: true,
     onSelect(button) {
-      nav.querySelector('[aria-current="page"]')?.removeAttribute('aria-current');
-      button.setAttribute('aria-current', 'page');
       status.textContent = `Selected ${button.dataset.name}.`;
-      navbar?.sync();
     },
     onAction(button) {
       status.textContent = `Opened ${button.dataset.name}.`;

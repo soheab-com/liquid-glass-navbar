@@ -1,6 +1,8 @@
 # Liquid Glass Navbar
 
-A framework-free TypeScript component for a glass tab bar. The lens follows a drag and settles on release. The host app supplies the buttons, handles navigation, and decides which item is current.
+**[Try it in the builder](https://soheab.com/navbar-builder/)**: set every option, preview it on a phone, tablet or desktop, and copy the code.
+
+A framework-free TypeScript component for a glass tab bar. The lens follows a drag and settles on release. The host app supplies the buttons and handles navigation; the navbar marks the tab you pick as current.
 
 ![Three labeled tabs in a bottom pill and an independent icon-only action](docs/mockups/position-bottom.png)
 
@@ -58,9 +60,7 @@ const navbar = mountLiquidGlassNavbar(nav, {
   transparency: 40,
   reorderable: true,
   onSelect(button) {
-    nav.querySelector('[aria-current="page"]')?.removeAttribute('aria-current');
-    button.setAttribute('aria-current', 'page');
-    navbar.sync();
+    // Show the page for this tab.
   },
   onAction(button) {
     button.dispatchEvent(new CustomEvent('open-search', { bubbles: true }));
@@ -71,7 +71,7 @@ const navbar = mountLiquidGlassNavbar(nav, {
 | Feature | API or markup |
 | --- | --- |
 | Position | Pass `position: 'top' \| 'bottom' \| 'left' \| 'right'` or call `setPosition(edge)`. Omit it to use your own layout. |
-| Selection | Mark the current tab with `aria-current="page"`. Call `sync()` after updating selection, availability, or theme. Actions use `data-navbar-action` and do not change the current tab. A swipe can end on an action: releasing there calls `onAction` and the lens returns to the current tab. |
+| Selection | Mark the starting tab with `aria-current="page"`. Tapping or swiping to a tab moves `aria-current` to it, then calls `onSelect` so you can show the page. Pass `autoSelect: false` to manage `aria-current` yourself, for example with a router, and call `sync()` after changing it. Also call `sync()` after changing availability or theme. Actions use `data-navbar-action` and do not change the current tab. A swipe can end on an action: releasing there calls `onAction` and the lens returns to the current tab. |
 | Labels and icons | Use `data-navbar-label` and `data-navbar-icon` on their elements. Either element can be omitted. Supply `aria-label` for icon-only buttons. |
 | Visibility | Use `labels: false` or `setLabels(false)` for the whole bar. For one item, use `setItemVisibility(button, { icon: false, label: false })` or the `data-navbar-hide-icon` and `data-navbar-hide-label` attributes. Hiding both parts removes the item from the layout and drag targets. |
 | Background | Pass `background` or call `setBackground(value)` with a CSS background value, such as a color or gradient. Call with no argument to use the theme's surface again. |
