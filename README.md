@@ -24,7 +24,7 @@ See the [mockups gallery](docs/mockups/README.md) for larger previews and the [e
 Install it straight from GitHub. The package exports TypeScript and CSS for use with a bundler.
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.1.0'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.1.1'
 ```
 
 ## Use
