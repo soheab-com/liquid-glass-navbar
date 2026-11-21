@@ -77,10 +77,20 @@
   box-shadow: inset 0 1px 0 var(--lg-nav-highlight, rgb(255 255 255 / .9)), inset 0 0 0 1px var(--lg-nav-rim, rgb(255 255 255 / .7)), 0 6px 16px var(--lg-nav-shadow, rgb(22 37 56 / .24));
 }
 .lg-navbar--enabled.lg-navbar--dragging .lg-navbar__lens {
-  scale: 1.15 1.1;
+  /* iOS: while dragged, the lens swells past the bar into a clear bubble with a faint rainbow rim. */
+  scale: 1.22 1.38;
   background:
-    linear-gradient(157deg, var(--lg-nav-highlight, rgb(255 255 255 / .9)), transparent 62%),
-    color-mix(in srgb, var(--lg-nav-accent, #2152a5) 19%, var(--lg-nav-surface, rgb(245 249 255 / .78)));
+    radial-gradient(120% 90% at 50% 0%, rgb(255 255 255 / .22), transparent 60%),
+    color-mix(in srgb, var(--lg-nav-surface, rgb(245 249 255 / .78)) 18%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .85),
+    inset 0 0 0 1px rgb(255 255 255 / .45),
+    inset 2px 0 3px -1px rgb(255 60 170 / .45),
+    inset -2px 0 3px -1px rgb(40 200 255 / .5),
+    inset 0 -2px 3px -1px rgb(120 255 190 / .35),
+    0 8px 22px var(--lg-nav-shadow, rgb(22 37 56 / .24));
+  -webkit-backdrop-filter: blur(1.5px) saturate(1.6) brightness(1.08);
+  backdrop-filter: blur(1.5px) saturate(1.6) brightness(1.08);
 }
 .lg-navbar--enabled.lg-navbar--dragging button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"]:not(.lg-navbar__preview) { color: var(--lg-nav-muted, #48566d); }
 .lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *).lg-navbar__preview { color: var(--lg-nav-accent, #2152a5); transform: scale(1.045); }
@@ -140,3 +150,51 @@
     opacity: 1;
   }
 }
+/* Equal width: every item takes the widest item's size, so the lens is the same everywhere. The script drops the
+   class when a label would no longer fit (setEqualWidth). */
+.lg-navbar--equal:not(.lg-navbar--sectioned),
+.lg-navbar--equal > [data-navbar-section] {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+.lg-navbar--equal.lg-navbar--vertical:not(.lg-navbar--sectioned),
+.lg-navbar--equal.lg-navbar--vertical > [data-navbar-section] {
+  grid-auto-flow: row;
+  grid-auto-rows: minmax(0, 1fr);
+  grid-auto-columns: auto;
+}
+/* Too long to fit: cut labels off with an ellipsis, or let the bar grow to the widest item times the count. */
+.lg-navbar--equal-truncate button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { min-width: 0; max-width: 100%; grid-template-columns: minmax(0, 1fr); }
+.lg-navbar--equal-truncate > [data-navbar-section] { min-width: 0; }
+/* Centred bars sit at left: 50%, which would cap a shrinkable bar at half the screen: size to the content, max-width caps it. */
+.lg-navbar.lg-navbar--equal-truncate { width: max-content; }
+.lg-navbar--equal-truncate [data-navbar-label] { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.lg-navbar.lg-navbar--equal-grow, .lg-navbar.lg-navbar--equal-grow[data-lg-navbar-position], .lg-navbar--equal-grow > [data-navbar-section] { max-width: none; }
+.lg-navbar--equal-grow > [data-navbar-section] { flex-shrink: 0; }
+.lg-navbar--equal-grow:not(.lg-navbar--sectioned), .lg-navbar--equal-grow > [data-navbar-section] { grid-auto-columns: minmax(max-content, 1fr); }
+.lg-navbar--equal-grow.lg-navbar--vertical:not(.lg-navbar--sectioned), .lg-navbar--equal-grow.lg-navbar--vertical > [data-navbar-section] { grid-auto-rows: minmax(max-content, 1fr); }
+
+/* Gradual highlight: the items stay one colour; the ink (accent copies, clipped to the lens) colours only what the
+   lens covers. */
+.lg-navbar__ink { display: none; }
+.lg-navbar--enabled > .lg-navbar__ink {
+  display: block; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  color: var(--lg-nav-accent, #2152a5);
+}
+.lg-navbar__ink-item {
+  position: absolute; display: grid; justify-items: center; align-content: center; gap: 2px; box-sizing: border-box;
+  padding: 5px 10px; white-space: nowrap; line-height: 1.15; font-size: .67rem; font-weight: 600;
+}
+.lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"],
+.lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *).lg-navbar__preview { color: var(--lg-nav-muted, inherit); transform: none; }
+.lg-navbar--no-labels .lg-navbar__ink [data-navbar-label],
+.lg-navbar--equal-truncate .lg-navbar__ink [data-navbar-label] { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+@media (prefers-reduced-motion: reduce) {
+}
+
+/* Separate icon and label colours (setColors). Without them both follow the item's colour. */
+.lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-icon] { color: var(--lg-nav-icon-color, inherit); }
+.lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-label] { color: var(--lg-nav-label-color, inherit); }
+.lg-navbar__ink [data-navbar-icon] { color: var(--lg-nav-icon-accent, inherit); }
+.lg-navbar__ink [data-navbar-label] { color: var(--lg-nav-label-accent, inherit); }

@@ -65,3 +65,19 @@ export function createSpring(initial: number, onUpdate: (value: number) => void,
     get moving() { return frame !== 0; },
   };
 }
+
+export const RUBBER_BAND_COEFFICIENT = 0.55;
+
+/** How far a thing moves when pulled `pull` past its end, given its size `dimension` (UIKit's rubber band). */
+export function rubberBand(pull: number, dimension: number, coefficient = RUBBER_BAND_COEFFICIENT): number {
+  if (dimension <= 0 || pull === 0) return 0;
+  const offset = (1 - 1 / ((coefficient * Math.abs(pull)) / dimension + 1)) * dimension;
+  return pull < 0 ? -offset : offset;
+}
+
+/** `value` followed 1:1 between `min` and `max`, rubber-banded beyond them. */
+export function rubberBanded(value: number, min: number, max: number, dimension: number): number {
+  if (value > max) return max + rubberBand(value - max, dimension);
+  if (value < min) return min - rubberBand(min - value, dimension);
+  return value;
+}

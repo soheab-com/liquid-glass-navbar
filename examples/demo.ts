@@ -1,4 +1,4 @@
-import { mountLiquidGlassNavbar, type LiquidGlassNavbar, type NavbarPosition } from '../src/index.js';
+import { mountLiquidGlassNavbar, type LiquidGlassNavbar, type NavbarPosition, type EqualWidthOverflow, type NavbarColors } from '../src/index.js';
 
 interface ExampleItem {
   name: string;
@@ -21,9 +21,16 @@ const status = document.querySelector<HTMLElement>('#status')!;
 const position = document.querySelector<HTMLSelectElement>('#position')!;
 const background = document.querySelector<HTMLSelectElement>('#background')!;
 const transparency = document.querySelector<HTMLInputElement>('#transparency')!;
+const colors = document.querySelector<HTMLSelectElement>('#colors')!;
+const COLOR_PRESETS: Record<string, NavbarColors | undefined> = {
+  orange: { selected: '#e8590c' },
+  'two-tone': { selected: '#7048e8', selectedLabel: '#1c7ed6', unselectedIcon: '#868e96' },
+};
 const transparencyValue = document.querySelector<HTMLOutputElement>('#transparency-value')!;
 const groups = document.querySelector<HTMLInputElement>('#groups')!;
 const labels = document.querySelector<HTMLInputElement>('#labels')!;
+const equal = document.querySelector<HTMLInputElement>('#equal')!;
+const equalOverflow = document.querySelector<HTMLSelectElement>('#equal-overflow')!;
 const mapIcon = document.querySelector<HTMLInputElement>('#map-icon')!;
 const mapLabel = document.querySelector<HTMLInputElement>('#map-label')!;
 const reorderMode = document.querySelector<HTMLInputElement>('#reorder')!;
@@ -34,6 +41,8 @@ const requestedPosition = parameters.get('position');
 position.value = positions.find((edge) => edge === requestedPosition) ?? 'bottom';
 groups.checked = parameters.get('groups') !== 'off';
 labels.checked = parameters.get('labels') !== 'off';
+equal.checked = parameters.has('equal');
+equalOverflow.value = ['truncate', 'grow'].includes(parameters.get('equal') ?? '') ? parameters.get('equal')! : 'natural';
 mapIcon.checked = parameters.get('mapIcon') !== 'off';
 mapLabel.checked = parameters.get('mapLabel') !== 'off';
 reorderMode.checked = parameters.has('reorder');
@@ -91,8 +100,11 @@ function mount(): void {
   navbar = mountLiquidGlassNavbar(nav, {
     position: positions.find((edge) => edge === position.value),
     labels: labels.checked,
+    equalWidth: equal.checked,
+    equalWidthOverflow: equalOverflow.value as EqualWidthOverflow,
     background: background.value || undefined,
     transparency: Number(transparency.value),
+    colors: COLOR_PRESETS[colors.value],
     reorderable: true,
     onSelect(button) {
       status.textContent = `Selected ${button.dataset.name}.`;
@@ -116,8 +128,12 @@ labels.addEventListener('change', () => {
   buttons[3].hidden = !labels.checked || parameters.has('searchOnly');
   navbar?.sync();
 });
+const applyEqual = () => navbar?.setEqualWidth(equal.checked, equalOverflow.value as EqualWidthOverflow);
+equal.addEventListener('change', applyEqual);
+equalOverflow.addEventListener('change', applyEqual);
 mapIcon.addEventListener('change', () => navbar?.setItemVisibility(mapButton, { icon: mapIcon.checked }));
 mapLabel.addEventListener('change', () => navbar?.setItemVisibility(mapButton, { label: mapLabel.checked }));
+colors.addEventListener('change', () => navbar?.setColors(COLOR_PRESETS[colors.value]));
 background.addEventListener('change', () => navbar?.setBackground(background.value || undefined));
 transparency.addEventListener('input', () => {
   navbar?.setTransparency(Number(transparency.value));

@@ -1,10 +1,26 @@
-import { createSpring } from './spring.js';
+import { createSpring, rubberBanded } from './spring.js';
 
 export type NavbarPosition = 'top' | 'bottom' | 'left' | 'right';
+
+/** What equal widths do when the widest item doesn't fit the bar. */
+export type EqualWidthOverflow = 'natural' | 'truncate' | 'grow';
 
 export interface ItemVisibility {
   icon?: boolean;
   label?: boolean;
+}
+
+/**
+ * Tab colours. `selected` is what the lens lights up (the current tab, and anything you drag over); `unselected`
+ * is every other tab. The icon and label versions override those for just that part. Any CSS colour works.
+ */
+export interface NavbarColors {
+  selected?: string;
+  unselected?: string;
+  selectedIcon?: string;
+  selectedLabel?: string;
+  unselectedIcon?: string;
+  unselectedLabel?: string;
 }
 
 export interface LiquidGlassNavbarOptions {
@@ -15,8 +31,11 @@ export interface LiquidGlassNavbarOptions {
   enabled?: () => boolean;
   position?: NavbarPosition;
   labels?: boolean;
+  equalWidth?: boolean;
+  equalWidthOverflow?: EqualWidthOverflow;
   background?: string;
   transparency?: number;
+  colors?: NavbarColors;
   reorderable?: boolean;
 }
 
@@ -24,8 +43,10 @@ export interface LiquidGlassNavbar {
   sync(): void;
   setPosition(position?: NavbarPosition): void;
   setLabels(visible: boolean): void;
+  setEqualWidth(equal: boolean, overflow?: EqualWidthOverflow): void;
   setBackground(background?: string): void;
   setTransparency(percentage?: number): void;
+  setColors(colors?: NavbarColors): void;
   setItemVisibility(item: HTMLButtonElement, visibility: ItemVisibility): void;
   setReorderMode(active: boolean): void;
   reorder(order: readonly HTMLButtonElement[]): void;
@@ -40,6 +61,9 @@ interface Gesture {
   draggedItem: HTMLButtonElement | null;
 }
 
+const INK_STYLES = ['font', 'letter-spacing', 'text-transform', 'line-height', 'padding', 'gap', 'justify-items',
+  'align-content', 'grid-template-columns', 'grid-auto-flow', 'display', 'flex-direction', 'align-items', 'justify-content'];
+
 const sectionSelector = ':scope > [data-navbar-section]';
 const buttonsIn = (section: HTMLElement): HTMLButtonElement[] =>
   [...section.querySelectorAll<HTMLButtonElement>(':scope > button')];
@@ -53,8 +77,15 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   const lens = document.createElement('span');
   lens.className = 'lg-navbar__lens';
   lens.setAttribute('aria-hidden', 'true');
+  // The ink: an accent-coloured copy of the items, clipped to the lens, so only the part of an icon or label that
+  // the lens is over lights up (like iOS), also halfway between two items while dragging.
+  const ink = document.createElement('span');
+  ink.className = 'lg-navbar__ink';
+  ink.setAttribute('aria-hidden', 'true');
+  ink.inert = true;
   nav.classList.add('lg-navbar');
   nav.prepend(lens);
+  nav.append(ink);
 
   let placement = options.position;
   let reorderMode = false;
@@ -66,9 +97,13 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   const sections = (): HTMLElement[] => [nav, ...nav.querySelectorAll<HTMLElement>(sectionSelector)];
   const items = (): HTMLButtonElement[] => sections().flatMap(buttonsIn);
   const tabs = (): HTMLButtonElement[] => items().filter((button) => isAvailable(button) && !isAction(button));
+  let lensSize = 0;
   const spring = createSpring(0, (offset) => {
     lens.style.translate = vertical() ? `0 ${offset}px` : `${offset}px 0`;
+    clipInk(offset);
   }, { response: .38, dampingRatio: .78 });
+  let releaseVelocity: { value: number; at: number } | undefined;
+  let samples: { position: number; time: number }[] = [];
 
   function offsetOf(button: HTMLButtonElement): { left: number; top: number } {
     let left = 0;
@@ -88,13 +123,49 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     return isVertical ? { start: top, size: button.offsetHeight } : { start: left, size: button.offsetWidth };
   }
 
-  function placeLens(button: HTMLButtonElement): void {
+  function placeLens(button: HTMLButtonElement, size?: number): void {
     const { left, top } = offsetOf(button);
-    lens.style.width = `${button.offsetWidth}px`;
-    lens.style.height = `${button.offsetHeight}px`;
+    const width = vertical() ? button.offsetWidth : size ?? button.offsetWidth;
+    const height = vertical() ? size ?? button.offsetHeight : button.offsetHeight;
+    lens.style.width = `${width}px`;
+    lens.style.height = `${height}px`;
     lens.style.left = vertical() ? `${left}px` : '0';
     lens.style.top = vertical() ? '0' : `${top}px`;
+    lensSize = vertical() ? height : width;
     lens.hidden = false;
+    clipInk(spring.value);
+  }
+
+  // Copies of the items, laid exactly over the real ones. Rebuilt on every sync (items, labels and sizes change).
+  function paintInk(): void {
+    const copies = items().filter(isAvailable).map((button) => {
+      const { left, top } = offsetOf(button);
+      const copy = document.createElement('span');
+      copy.className = 'lg-navbar__ink-item';
+      copy.style.cssText = `left:${left}px;top:${top}px;width:${button.offsetWidth}px;height:${button.offsetHeight}px`;
+      // Same type and spacing as the real item, even when the host restyles its buttons.
+      const style = getComputedStyle(button);
+      for (const name of INK_STYLES) copy.style.setProperty(name, style.getPropertyValue(name));
+      for (const name of ['data-navbar-hide-icon', 'data-navbar-hide-label']) {
+        if (button.hasAttribute(name)) copy.setAttribute(name, '');
+      }
+      for (const child of button.children) {
+        if (child.matches('[data-navbar-icon], [data-navbar-label]')) copy.append(child.cloneNode(true));
+      }
+      copy.querySelectorAll('[id]').forEach((node) => node.removeAttribute('id'));
+      return copy;
+    });
+    ink.replaceChildren(...copies);
+  }
+
+  function clipInk(offset: number): void {
+    if (lens.hidden) { ink.style.clipPath = 'inset(50%)'; return; }
+    const radius = Math.min(lens.offsetWidth, lens.offsetHeight) / 2;
+    const left = vertical() ? lens.offsetLeft : offset;
+    const top = vertical() ? offset : lens.offsetTop;
+    const right = nav.clientWidth - left - lens.offsetWidth;
+    const bottom = nav.clientHeight - top - lens.offsetHeight;
+    ink.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px round ${radius}px)`;
   }
 
   function labelItems(): void {
@@ -113,16 +184,22 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     nav.classList.toggle('lg-navbar--enabled', isEnabled);
     nav.classList.toggle('lg-navbar--sectioned', sections().length > 1);
     labelItems();
+    fitEqualWidth();
+    paintInk();
     const active = tabs().find((button) => button.getAttribute('aria-current') === 'page');
     if (!active) {
       lens.hidden = true;
       spring.stop();
+      clipInk(0);
       return;
     }
     placeLens(active);
     const { start } = measure(active);
+    // A swipe that just ended hands its speed to the spring, so the lens carries on and settles.
+    const velocity = releaseVelocity && performance.now() - releaseVelocity.at < 600 ? releaseVelocity.value : undefined;
+    releaseVelocity = undefined;
     if (immediate || !isEnabled) spring.set(start);
-    else spring.to(start);
+    else spring.to(start, velocity);
   }
 
   function buttonAt(event: Event): HTMLButtonElement | null {
@@ -171,6 +248,26 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     options.onSelect?.(button);
   }
 
+  function blendedSize(spans: { start: number; size: number }[], position: number): number {
+    const centres = spans.map(({ start, size }) => start + size / 2);
+    if (position <= centres[0]) return spans[0].size;
+    for (let i = 1; i < spans.length; i++) {
+      if (position <= centres[i]) {
+        const t = (position - centres[i - 1]) / (centres[i] - centres[i - 1] || 1);
+        return spans[i - 1].size + (spans[i].size - spans[i - 1].size) * t;
+      }
+    }
+    return spans[spans.length - 1].size;
+  }
+
+  // Speed at release from the last ~100 ms of movement, in px per second.
+  function velocityOf(points: { position: number; time: number }[]): number {
+    if (points.length < 2) return 0;
+    const first = points[0], last = points[points.length - 1];
+    const seconds = (last.time - first.time) / 1000;
+    return seconds > 0 ? (last.position - first.position) / seconds : 0;
+  }
+
   function candidates(): HTMLButtonElement[] {
     return gesture?.draggedItem ? peers(gesture.draggedItem).filter(isAvailable) : items().filter(isAvailable);
   }
@@ -189,6 +286,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     const { dragging, draggedItem } = gesture;
     const target = dragging && !cancelled ? closest(candidates(), eventPosition(event)) : undefined;
     gesture = undefined;
+    if (dragging) releaseVelocity = { value: velocityOf(samples), at: performance.now() };
+    samples = [];
     nav.classList.remove('lg-navbar--pressed', 'lg-navbar--dragging');
     items().forEach((button) => button.classList.remove('lg-navbar__preview'));
     if (nav.hasPointerCapture(event.pointerId)) nav.releasePointerCapture(event.pointerId);
@@ -230,10 +329,15 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     const position = eventPosition(event);
     const target = closest(buttons, position);
     if (!target) return;
-    const starts = buttons.map((button) => measure(button).start);
-    const offset = position - measure(target).size / 2;
-    placeLens(target);
-    spring.set(Math.max(Math.min(...starts), Math.min(Math.max(...starts), offset)));
+    samples = [...samples.filter((sample) => event.timeStamp - sample.time < 100), { position, time: event.timeStamp }];
+    // The lens follows the finger, its size blending between the two items it's between; past the first or last
+    // item it gives like a rubber band instead of stopping dead.
+    const spans = buttons.map(measure).sort((a, b) => a.start - b.start);
+    const size = blendedSize(spans, position);
+    const offset = position - size / 2;
+    const min = spans[0].start, max = spans[spans.length - 1].start + spans[spans.length - 1].size - size;
+    placeLens(target, size);
+    spring.set(rubberBanded(offset, min, max, size));
     items().forEach((button) => button.classList.toggle('lg-navbar__preview', button === target));
   }, { passive: true, signal });
   window.addEventListener('pointerup', (event) => finish(event), { signal });
@@ -274,6 +378,32 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     sync(true);
   }
 
+  let equalWidth = false;
+  let equalOverflow: EqualWidthOverflow = 'natural';
+  // 'natural' keeps equal widths only while every label fits; 'truncate' and 'grow' always keep them.
+  function fitEqualWidth(): void {
+    nav.classList.toggle('lg-navbar--equal', equalWidth);
+    nav.classList.toggle('lg-navbar--equal-truncate', equalWidth && equalOverflow === 'truncate');
+    nav.classList.toggle('lg-navbar--equal-grow', equalWidth && equalOverflow === 'grow');
+    if (equalWidth && equalOverflow === 'natural'
+        && items().some((button) => isAvailable(button) && !fits(button))) {
+      nav.classList.remove('lg-navbar--equal');
+    }
+  }
+
+  // Does the button's content (icon, label) fit inside it? Labels don't wrap, so they overflow when it's too narrow.
+  function fits(button: HTMLButtonElement): boolean {
+    const style = getComputedStyle(button);
+    const room = button.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    return [...button.children].every((child) => child.getBoundingClientRect().width <= room + 1);
+  }
+
+  function setEqualWidth(equal: boolean, overflow: EqualWidthOverflow = equalOverflow): void {
+    equalWidth = equal;
+    equalOverflow = overflow;
+    sync(true);
+  }
+
   function setLabels(visible: boolean): void {
     nav.classList.toggle('lg-navbar--no-labels', !visible);
     sync(true);
@@ -283,6 +413,23 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     if (background !== undefined && !CSS.supports('background', background)) throw new Error('Invalid navbar background.');
     if (background === undefined) nav.style.removeProperty('--lg-nav-background');
     else nav.style.setProperty('--lg-nav-background', background);
+  }
+
+  // Each colour becomes a CSS variable on the bar; leaving one out falls back to the theme.
+  const COLOR_VARIABLES: Record<keyof NavbarColors, string> = {
+    selected: '--lg-nav-accent',
+    unselected: '--lg-nav-muted',
+    selectedIcon: '--lg-nav-icon-accent',
+    selectedLabel: '--lg-nav-label-accent',
+    unselectedIcon: '--lg-nav-icon-color',
+    unselectedLabel: '--lg-nav-label-color',
+  };
+  function setColors(colors: NavbarColors = {}): void {
+    for (const [key, variable] of Object.entries(COLOR_VARIABLES) as [keyof NavbarColors, string][]) {
+      const value = colors[key];
+      if (value) nav.style.setProperty(variable, value);
+      else nav.style.removeProperty(variable);
+    }
   }
 
   function setTransparency(percentage?: number): void {
@@ -296,17 +443,23 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
 
   const observer = new ResizeObserver(() => { if (!gesture?.dragging) sync(true); });
   observer.observe(nav);
+  // A bar that fell back to natural widths may fit equal ones again after the window grows, without itself resizing.
+  addEventListener('resize', () => { if (equalWidth && !gesture?.dragging) sync(true); }, { signal, passive: true });
   setPosition(placement);
   setLabels(options.labels ?? true);
+  setEqualWidth(options.equalWidth ?? false, options.equalWidthOverflow ?? 'natural');
   setBackground(options.background);
   setTransparency(options.transparency);
+  setColors(options.colors);
 
   return {
     sync: () => sync(),
     setPosition,
     setLabels,
+    setEqualWidth,
     setBackground,
     setTransparency,
+    setColors,
     setItemVisibility(button, { icon, label }) {
       if (!items().includes(button)) throw new Error('The button does not belong to this navbar.');
       if (icon !== undefined) button.toggleAttribute('data-navbar-hide-icon', !icon);
@@ -328,8 +481,10 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       delete nav.dataset.lgNavbarPosition;
       nav.style.removeProperty('--lg-nav-background');
       nav.style.removeProperty('--lg-nav-tint');
+      setColors();
       for (const name of [...nav.classList]) if (name === 'lg-navbar' || name.startsWith('lg-navbar--')) nav.classList.remove(name);
       lens.remove();
+      ink.remove();
     },
   };
 }
