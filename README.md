@@ -14,7 +14,7 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 It isn't on npm. Install it from GitHub:
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.2.0'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.3.0'
 ```
 
 You need a bundler (Vite, esbuild, webpack and so on), because the package ships TypeScript and CSS.
@@ -56,6 +56,8 @@ const navbar = mountLiquidGlassNavbar(document.querySelector('#tabs')!, {
 
 That's it. Tapping or swiping to a tab moves `aria-current` to it and calls `onSelect`. Showing the right page is up to you.
 
+If every tab is its own page, use links instead of buttons: `<a href="/schedule">`. Tapping a link, or ending a swipe on it, follows it like any other link.
+
 ## Sections and actions
 
 To split the bar into separate pills, wrap groups of buttons in `data-navbar-section`. A button with `data-navbar-action` is something you do, like Search or opening a menu, so it never becomes the current tab. Tapping it, or ending a swipe on it, calls `onAction`.
@@ -92,8 +94,8 @@ Pass these to `mountLiquidGlassNavbar`. All of them are optional.
 | `reorderable` | `true` lets people reorder tabs, see [Reordering](#reordering). |
 | `autoSelect` | `false` stops the navbar from moving `aria-current` itself. Use this with a router: change `aria-current` yourself, then call `sync()`. |
 | `enabled` | A function that returns `false` to switch the glass off, for example in a theme that shouldn't have it. |
-| `onSelect(button)` | Called when someone picks a tab. |
-| `onAction(button)` | Called when someone picks an action. |
+| `onSelect(item)` | Called when someone picks a tab. `item` is the button or link. |
+| `onAction(item)` | Called when someone picks an action. |
 | `onReorder(order, section)` | Called after tabs are reordered, so you can save the order. |
 
 ## Changing things later

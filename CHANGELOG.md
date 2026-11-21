@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Tabs can be links now. Put `<a href>` elements in the bar instead of buttons and every tab is its own page: tapping one, or ending a swipe on it, follows the link. Callbacks get the link (`NavbarItem` is a button or a link).
+- Items your own CSS hides (`display: none`, for example ones moved into a "More" menu) are skipped, the same as items with `hidden`.
+- Fixed: the highlight layer could make the bar report a wider scroll width than it has, which confused pages that measure the bar to decide what fits.
+- Fixed: on link tabs the browser's own link dragging cancelled a swipe as soon as it started.
+
 ## 0.2.0
 
 - New `equalWidth` option: every tab gets the width of the longest one, so the lens is the same size everywhere. If the bar is too narrow for that, `equalWidthOverflow` picks what happens: go back to natural widths (the default), cut labels off with "…", or let the bar grow. `setEqualWidth()` changes it later.
