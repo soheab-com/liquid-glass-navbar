@@ -34,7 +34,7 @@
   pointer-events: none;
 }
 .lg-navbar--custom-tint { --lg-nav-tint-surface: var(--lg-nav-opaque, #f5f9ff); }
-.lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) {
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) {
   position: relative;
   display: grid;
   justify-items: center;
@@ -52,13 +52,14 @@
   line-height: 1.15;
   font-size: .67rem;
   font-weight: 600;
+  text-decoration: none;
 }
-.lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"] { color: var(--lg-nav-accent, #2152a5); }
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"] { color: var(--lg-nav-accent, #2152a5); }
 .lg-navbar--enabled svg { width: 22px; height: 22px; }
 .lg-navbar__lens { display: none; }
 .lg-navbar--enabled { touch-action: pan-y; user-select: none; }
-.lg-navbar.lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"]::before { opacity: 0; }
-.lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { z-index: 2; }
+.lg-navbar.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"]::before { opacity: 0; }
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { z-index: 2; }
 .lg-navbar--enabled .lg-navbar__lens:not([hidden]) {
   display: block;
   position: absolute;
@@ -92,10 +93,10 @@
   -webkit-backdrop-filter: blur(1.5px) saturate(1.6) brightness(1.08);
   backdrop-filter: blur(1.5px) saturate(1.6) brightness(1.08);
 }
-.lg-navbar--enabled.lg-navbar--dragging button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"]:not(.lg-navbar__preview) { color: var(--lg-nav-muted, #48566d); }
-.lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *).lg-navbar__preview { color: var(--lg-nav-accent, #2152a5); transform: scale(1.045); }
+.lg-navbar--enabled.lg-navbar--dragging :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"]:not(.lg-navbar__preview) { color: var(--lg-nav-muted, #48566d); }
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *).lg-navbar__preview { color: var(--lg-nav-accent, #2152a5); transform: scale(1.045); }
 @media (prefers-reduced-motion: reduce) {
-  .lg-navbar--enabled .lg-navbar__lens, .lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *).lg-navbar__preview { scale: 1; transform: none; transition: none; }
+  .lg-navbar--enabled .lg-navbar__lens, .lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *).lg-navbar__preview { scale: 1; transform: none; transition: none; }
 }
 
 
@@ -113,7 +114,7 @@
   gap: 1px;
   padding: 4px;
 }
-.lg-navbar > [data-navbar-section] > button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { min-width: 49px; }
+.lg-navbar > [data-navbar-section] > :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { min-width: 49px; }
 .lg-navbar--vertical, .lg-navbar--vertical > [data-navbar-section] { flex-direction: column; }
 .lg-navbar--enabled.lg-navbar--vertical { touch-action: pan-x; }
 .lg-navbar[data-lg-navbar-position] {
@@ -134,10 +135,10 @@
 .lg-navbar--no-labels [data-navbar-label],
 .lg-navbar [data-navbar-hide-label] [data-navbar-label],
 .lg-navbar [data-navbar-hide-icon] [data-navbar-icon] { display: none; }
-.lg-navbar button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[hidden],
-.lg-navbar button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[data-navbar-hide-icon][data-navbar-hide-label] { display: none !important; }
-.lg-navbar--reordering button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { cursor: grab; }
-.lg-navbar--reordering.lg-navbar--dragging button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { cursor: grabbing; }
+.lg-navbar :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[hidden],
+.lg-navbar :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[data-navbar-hide-icon][data-navbar-hide-label] { display: none !important; }
+.lg-navbar--reordering :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { cursor: grab; }
+.lg-navbar--reordering.lg-navbar--dragging :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { cursor: grabbing; }
 @media (prefers-reduced-transparency: reduce) {
   .lg-navbar--enabled:not(.lg-navbar--sectioned)::before,
   .lg-navbar--enabled > [data-navbar-section]::before {
@@ -165,7 +166,7 @@
   grid-auto-columns: auto;
 }
 /* Too long to fit: cut labels off with an ellipsis, or let the bar grow to the widest item times the count. */
-.lg-navbar--equal-truncate button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { min-width: 0; max-width: 100%; grid-template-columns: minmax(0, 1fr); }
+.lg-navbar--equal-truncate :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { min-width: 0; max-width: 100%; grid-template-columns: minmax(0, 1fr); }
 .lg-navbar--equal-truncate > [data-navbar-section] { min-width: 0; }
 /* Centred bars sit at left: 50%, which would cap a shrinkable bar at half the screen: size to the content, max-width caps it. */
 .lg-navbar.lg-navbar--equal-truncate { width: max-content; }
@@ -180,21 +181,26 @@
 .lg-navbar__ink { display: none; }
 .lg-navbar--enabled > .lg-navbar__ink {
   display: block; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  /* Copies left at an old layout must never widen the bar: hosts measure its scroll width. */
+  overflow: hidden;
   color: var(--lg-nav-accent, #2152a5);
 }
 .lg-navbar__ink-item {
   position: absolute; display: grid; justify-items: center; align-content: center; gap: 2px; box-sizing: border-box;
   padding: 5px 10px; white-space: nowrap; line-height: 1.15; font-size: .67rem; font-weight: 600;
 }
-.lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"],
-.lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *).lg-navbar__preview { color: var(--lg-nav-muted, inherit); transform: none; }
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"],
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *).lg-navbar__preview { color: var(--lg-nav-muted, inherit); transform: none; }
 .lg-navbar--no-labels .lg-navbar__ink [data-navbar-label],
 .lg-navbar--equal-truncate .lg-navbar__ink [data-navbar-label] { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 @media (prefers-reduced-motion: reduce) {
 }
 
 /* Separate icon and label colours (setColors). Without them both follow the item's colour. */
-.lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-icon] { color: var(--lg-nav-icon-color, inherit); }
-.lg-navbar--enabled button:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-label] { color: var(--lg-nav-label-color, inherit); }
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-icon] { color: var(--lg-nav-icon-color, inherit); }
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-label] { color: var(--lg-nav-label-color, inherit); }
 .lg-navbar__ink [data-navbar-icon] { color: var(--lg-nav-icon-accent, inherit); }
 .lg-navbar__ink [data-navbar-label] { color: var(--lg-nav-label-accent, inherit); }
+
+/* Link tabs: no native drag ghost while swiping (the script also cancels dragstart). */
+.lg-navbar--enabled a:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { -webkit-user-drag: none; }

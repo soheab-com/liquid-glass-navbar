@@ -24,10 +24,10 @@ export interface NavbarColors {
 }
 
 export interface LiquidGlassNavbarOptions {
-  onSelect?: (button: HTMLButtonElement) => void;
+  onSelect?: (button: NavbarItem) => void;
   autoSelect?: boolean;
-  onAction?: (button: HTMLButtonElement) => void;
-  onReorder?: (order: readonly HTMLButtonElement[], section: HTMLElement) => void;
+  onAction?: (button: NavbarItem) => void;
+  onReorder?: (order: readonly NavbarItem[], section: HTMLElement) => void;
   enabled?: () => boolean;
   position?: NavbarPosition;
   labels?: boolean;
@@ -47,9 +47,9 @@ export interface LiquidGlassNavbar {
   setBackground(background?: string): void;
   setTransparency(percentage?: number): void;
   setColors(colors?: NavbarColors): void;
-  setItemVisibility(item: HTMLButtonElement, visibility: ItemVisibility): void;
+  setItemVisibility(item: NavbarItem, visibility: ItemVisibility): void;
   setReorderMode(active: boolean): void;
-  reorder(order: readonly HTMLButtonElement[]): void;
+  reorder(order: readonly NavbarItem[]): void;
   destroy(): void;
 }
 
@@ -58,17 +58,25 @@ interface Gesture {
   start: number;
   crossStart: number;
   dragging: boolean;
-  draggedItem: HTMLButtonElement | null;
+  draggedItem: NavbarItem | null;
 }
 
 const INK_STYLES = ['font', 'letter-spacing', 'text-transform', 'line-height', 'padding', 'gap', 'justify-items',
   'align-content', 'grid-template-columns', 'grid-auto-flow', 'display', 'flex-direction', 'align-items', 'justify-content'];
 
+/** A tab or action: a `<button>`, or an `<a href>` for sites where each tab is its own page. */
+export type NavbarItem = HTMLButtonElement | HTMLAnchorElement;
+
+const ITEM_SELECTOR = ':scope > button, :scope > a[href]';
+
 const sectionSelector = ':scope > [data-navbar-section]';
-const buttonsIn = (section: HTMLElement): HTMLButtonElement[] =>
-  [...section.querySelectorAll<HTMLButtonElement>(':scope > button')];
-const isAction = (button: HTMLButtonElement): boolean => button.hasAttribute('data-navbar-action');
-const isAvailable = (button: HTMLButtonElement): boolean => !button.hidden && !button.disabled
+const buttonsIn = (section: HTMLElement): NavbarItem[] =>
+  [...section.querySelectorAll<NavbarItem>(ITEM_SELECTOR)];
+const isAction = (button: NavbarItem): boolean => button.hasAttribute('data-navbar-action');
+const isAvailable = (button: NavbarItem): boolean => !button.hidden
+  && !(button instanceof HTMLButtonElement && button.disabled)
+  // Hidden by the page's own CSS (display: none), for example an item that moved into a "More" menu.
+  && button.getClientRects().length > 0
   && !(button.hasAttribute('data-navbar-hide-icon') && button.hasAttribute('data-navbar-hide-label'));
 
 export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNavbarOptions): LiquidGlassNavbar {
@@ -91,12 +99,12 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   let reorderMode = false;
   let gesture: Gesture | undefined;
   let suppressClick = false;
-  const generatedLabels = new Set<HTMLButtonElement>();
+  const generatedLabels = new Set<NavbarItem>();
   const enabled = options.enabled ?? (() => true);
   const vertical = (): boolean => placement === 'left' || placement === 'right';
   const sections = (): HTMLElement[] => [nav, ...nav.querySelectorAll<HTMLElement>(sectionSelector)];
-  const items = (): HTMLButtonElement[] => sections().flatMap(buttonsIn);
-  const tabs = (): HTMLButtonElement[] => items().filter((button) => isAvailable(button) && !isAction(button));
+  const items = (): NavbarItem[] => sections().flatMap(buttonsIn);
+  const tabs = (): NavbarItem[] => items().filter((button) => isAvailable(button) && !isAction(button));
   let lensSize = 0;
   const spring = createSpring(0, (offset) => {
     lens.style.translate = vertical() ? `0 ${offset}px` : `${offset}px 0`;
@@ -105,7 +113,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   let releaseVelocity: { value: number; at: number } | undefined;
   let samples: { position: number; time: number }[] = [];
 
-  function offsetOf(button: HTMLButtonElement): { left: number; top: number } {
+  function offsetOf(button: NavbarItem): { left: number; top: number } {
     let left = 0;
     let top = 0;
     let node: HTMLElement | null = button;
@@ -117,13 +125,13 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     return { left, top };
   }
 
-  function measure(button: HTMLButtonElement): { start: number; size: number } {
+  function measure(button: NavbarItem): { start: number; size: number } {
     const { left, top } = offsetOf(button);
     const isVertical = vertical();
     return isVertical ? { start: top, size: button.offsetHeight } : { start: left, size: button.offsetWidth };
   }
 
-  function placeLens(button: HTMLButtonElement, size?: number): void {
+  function placeLens(button: NavbarItem, size?: number): void {
     const { left, top } = offsetOf(button);
     const width = vertical() ? button.offsetWidth : size ?? button.offsetWidth;
     const height = vertical() ? size ?? button.offsetHeight : button.offsetHeight;
@@ -202,9 +210,9 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     else spring.to(start, velocity);
   }
 
-  function buttonAt(event: Event): HTMLButtonElement | null {
-    const button = event.target instanceof Element ? event.target.closest('button') : null;
-    return button instanceof HTMLButtonElement && items().includes(button) && isAvailable(button) ? button : null;
+  function buttonAt(event: Event): NavbarItem | null {
+    const button = event.target instanceof Element ? event.target.closest<NavbarItem>('button, a[href]') : null;
+    return button && items().includes(button) && isAvailable(button) ? button : null;
   }
 
   function eventPosition(event: PointerEvent): number {
@@ -212,11 +220,11 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     return vertical() ? event.clientY - rect.top - nav.clientTop : event.clientX - rect.left - nav.clientLeft;
   }
 
-  function peers(button: HTMLButtonElement): HTMLButtonElement[] {
+  function peers(button: NavbarItem): NavbarItem[] {
     return button.parentElement ? buttonsIn(button.parentElement) : [];
   }
 
-  function reorder(order: readonly HTMLButtonElement[]): void {
+  function reorder(order: readonly NavbarItem[]): void {
     if (order.length === 0) return;
     const section = order[0].parentElement;
     const original = peers(order[0]);
@@ -226,12 +234,12 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     }
     const focused = document.activeElement;
     section.append(...order);
-    if (focused instanceof HTMLButtonElement && order.includes(focused)) focused.focus({ preventScroll: true });
+    if ((focused instanceof HTMLButtonElement || focused instanceof HTMLAnchorElement) && order.includes(focused)) focused.focus({ preventScroll: true });
     options.onReorder?.([...order], section);
     sync(true);
   }
 
-  function moveTo(button: HTMLButtonElement, target: HTMLButtonElement): void {
+  function moveTo(button: NavbarItem, target: NavbarItem): void {
     if (button === target) return;
     const order = peers(button);
     const index = order.indexOf(target);
@@ -240,7 +248,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     reorder(order);
   }
 
-  function select(button: HTMLButtonElement): void {
+  function select(button: NavbarItem): void {
     if (options.autoSelect !== false) {
       for (const current of nav.querySelectorAll('[aria-current="page"]')) current.removeAttribute('aria-current');
       button.setAttribute('aria-current', 'page');
@@ -268,12 +276,12 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     return seconds > 0 ? (last.position - first.position) / seconds : 0;
   }
 
-  function candidates(): HTMLButtonElement[] {
+  function candidates(): NavbarItem[] {
     return gesture?.draggedItem ? peers(gesture.draggedItem).filter(isAvailable) : items().filter(isAvailable);
   }
 
-  function closest(buttons: HTMLButtonElement[], position: number): HTMLButtonElement | undefined {
-    return buttons.reduce<HTMLButtonElement | undefined>((best, next) => {
+  function closest(buttons: NavbarItem[], position: number): NavbarItem | undefined {
+    return buttons.reduce<NavbarItem | undefined>((best, next) => {
       const { start, size } = measure(next);
       if (!best) return next;
       const current = measure(best);
@@ -295,11 +303,17 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       suppressClick = true;
       if (draggedItem) moveTo(draggedItem, target);
       else if (isAction(target)) options.onAction?.(target);
+      // A link is followed like a tap: its click selects it, then the browser navigates.
+      else if (target instanceof HTMLAnchorElement) target.click();
       else select(target);
     }
     sync();
   }
 
+  // Links can be dragged out of the page by default, which cancels the swipe as soon as it starts.
+  nav.addEventListener('dragstart', (event) => {
+    if (enabled() && buttonAt(event)) event.preventDefault();
+  }, { signal });
   nav.addEventListener('pointerdown', (event) => {
     if (!event.isPrimary || event.button !== 0) return;
     suppressClick = false;
@@ -392,7 +406,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   }
 
   // Does the button's content (icon, label) fit inside it? Labels don't wrap, so they overflow when it's too narrow.
-  function fits(button: HTMLButtonElement): boolean {
+  function fits(button: NavbarItem): boolean {
     const style = getComputedStyle(button);
     const room = button.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
     return [...button.children].every((child) => child.getBoundingClientRect().width <= room + 1);
