@@ -14,7 +14,7 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 It isn't on npm. Install it from GitHub:
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.5.3'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.5.4'
 ```
 
 You need a bundler (Vite, esbuild, webpack and so on), because the package ships TypeScript and CSS.
@@ -156,6 +156,8 @@ If you prefer CSS, set the same colours as variables on the nav. `--lg-nav-accen
 Press a tab and slide along the bar. The highlight follows your finger and swells into a clear bubble. Only the part of a tab under the bubble lights up, so halfway between two tabs you see half of each. Let go and it settles on the nearest tab, keeping the speed you let go at. Pull past the first or last tab and it stretches like a rubber band instead of stopping dead.
 
 People who turn on Reduce Motion get the same result without the animation, and Reduce Transparency swaps the default glass for a solid colour. An explicit transparency setting takes precedence.
+
+Swipes can start or land on tabs and actions, including across sections. Add `data-navbar-no-swipe` to an item or section to exclude it from the swipe gesture. Tapping and keyboard activation still work.
 
 ## Reordering
 

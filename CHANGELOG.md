@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.4
+
+- Start a swipe from action items as well as tabs. Add `data-navbar-no-swipe` to an item or section to keep it out of gestures.
+
 ## 0.5.3
 
 - Use the platform UI font consistently for buttons, links, and the selected tab. Customize it with `--lg-nav-font`.

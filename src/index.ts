@@ -74,6 +74,7 @@ const sectionSelector = ':scope > [data-navbar-section]';
 const buttonsIn = (section: HTMLElement): NavbarItem[] =>
   [...section.querySelectorAll<NavbarItem>(ITEM_SELECTOR)];
 const isAction = (button: NavbarItem): boolean => button.hasAttribute('data-navbar-action');
+const allowsSwipe = (button: NavbarItem): boolean => !button.closest('[data-navbar-no-swipe]');
 const isAvailable = (button: NavbarItem): boolean => !button.hidden
   && !(button instanceof HTMLButtonElement && button.disabled)
   // Hidden by the page's own CSS (display: none), for example an item that moved into a "More" menu.
@@ -281,7 +282,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   }
 
   function candidates(): NavbarItem[] {
-    return gesture?.draggedItem ? peers(gesture.draggedItem).filter(isAvailable) : items().filter(isAvailable);
+    if (gesture?.draggedItem) return peers(gesture.draggedItem).filter(isAvailable);
+    return items().filter(button => isAvailable(button) && allowsSwipe(button));
   }
 
   function closest(buttons: NavbarItem[], position: number): NavbarItem | undefined {
@@ -322,7 +324,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     if (!event.isPrimary || event.button !== 0) return;
     suppressClick = false;
     const button = buttonAt(event);
-    if (!button || !enabled() || (!reorderMode && isAction(button))) return;
+    if (!button || !enabled() || (!reorderMode && !allowsSwipe(button))) return;
     gesture = {
       id: event.pointerId,
       start: vertical() ? event.clientY : event.clientX,
