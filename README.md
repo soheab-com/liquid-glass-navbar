@@ -14,7 +14,7 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 It isn't on npm. Install it from GitHub:
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.5.5'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.6.0'
 ```
 
 You need a bundler (Vite, esbuild, webpack and so on), because the package ships TypeScript and CSS.
@@ -109,6 +109,14 @@ Pass these to `mountLiquidGlassNavbar`. All of them are optional.
 | `onSelect(item)` | Called when someone picks a tab. `item` is the button or link. |
 | `onAction(item)` | Called when someone picks an action. |
 | `onReorder(order, section)` | Called after tabs are reordered, so you can save the order. |
+| `layout` | `'row'` (the default), `'wrap'` or `'rows'`. See [Rows and More](#rows-and-more). |
+| `maxRows` | With `overflow`, how many rows to use before items move into More. |
+| `overflow` | `true`, `'menu'`, `'expand'` or an options object. Items that don't fit move into a More button. |
+| `onOverflowChange(items)` | Called when items move between the bar and More. |
+| `compact` | `true` starts with icons only. |
+| `scrollCompact` | `true` or `{ source, threshold }`. Scrolling down compacts the bar and scrolling up restores the labels. |
+| `onCompactChange(compact)` | Called when the bar compacts or expands. |
+| `contrast` | `true` or `{ regions, adaptiveTint }`. See [Adaptive contrast](#adaptive-contrast). |
 
 ## Changing things later
 
@@ -125,6 +133,16 @@ Pass these to `mountLiquidGlassNavbar`. All of them are optional.
 | `setItemVisibility(button, { icon, label })` | Hides the icon or label of one tab. Hiding both hides the whole tab. You can also use the `data-navbar-hide-icon` and `data-navbar-hide-label` attributes. |
 | `setReorderMode(on)` | Turns drag-to-reorder on or off. |
 | `reorder(buttons)` | Puts the tabs of one section in a new order. Pass every button of that section once. |
+| `select(item)` | Marks a tab as current without calling `onSelect`, for example to restore a saved tab. Works for tabs behind More. |
+| `setLayout(layout, maxRows?)` | Changes the layout and row limit. |
+| `setOverflow(overflow?)` | Turns More on, changes its style, or turns it off. |
+| `overflowItems` | The items behind More right now. |
+| `openOverflow({ focus })`, `closeOverflow()` | Opens or closes More from your own code. |
+| `setBadge(item, badge)` | Shows `{ count }`, `{ dot: true }` or `{ status, label }` on an item. Pass `null` to remove it. |
+| `setCompact(on)`, `setScrollCompact(options?)` | Compacts the bar yourself, or changes the scroll watcher. |
+| `setContrast(options?)`, `setBackdrop(signal?)` | Changes contrast settings, or tells the bar what's behind it: `{ tone: 'dark', busy: true }`. |
+| `showContextActions(nodes, { label })`, `hideContextActions()` | Swaps the navigation for your own actions, then brings it back with the same tab selected. |
+| `createPopover(item, content, options)` | Anchors a popover to one of the bar's items. See [Popovers](#popovers). |
 | `sync()` | Tells the navbar something changed: the current tab, a hidden tab, or the theme. |
 | `destroy()` | Removes everything the navbar added. Call it before you remove the `<nav>`. |
 
@@ -162,6 +180,82 @@ Swipes can start or land on tabs and actions, including across sections. Add `da
 ## Reordering
 
 With `reorderable: true`, people can move a focused tab with Alt and the arrow keys. To let them drag tabs around with a mouse or finger too, call `setReorderMode(true)`, for example from an "Edit" button. Tabs only move within their own section. Use `onReorder` to save the new order.
+
+## Rows and More
+
+Everything here is optional; a bar without these options behaves as before. Multi-row layouts and More apply to bars along the top or bottom, or bars you place yourself.
+
+```ts
+mountLiquidGlassNavbar(nav, { layout: 'wrap' });             // rows inside one glass surface
+mountLiquidGlassNavbar(nav, { layout: 'rows' });             // one centered pill per row
+mountLiquidGlassNavbar(nav, { overflow: true });             // one row; extra items go into a More menu
+mountLiquidGlassNavbar(nav, { layout: 'wrap', maxRows: 2, overflow: 'menu' });
+mountLiquidGlassNavbar(nav, { overflow: { style: 'expand', surface: 'individual', maxVisible: 4 } });
+```
+
+The bar measures the real icons, full labels, padding and gaps, including More itself, and reflows when the space changes. The current tab stays selected when it moves into More or back; More shows it as current while it's inside. Items keep their focus when they move.
+
+- Put an item or a `[data-navbar-section]` on a row with `data-navbar-row="1"`, `"2"` and so on.
+- Keep an item in the bar with `data-navbar-overflow="never"`.
+- `overflow` options: `style` (`'menu'` or `'expand'`), `surface` (`'shared'` pill or `'individual'` glass icons, for `expand`), `label`, `icon`, `maxVisible` and `boundary`.
+
+More closes when another tab is pressed, on an outside press, after a selection, and on Escape. Focus goes back to More when it was inside.
+
+## Swiping across rows
+
+When the bar has rows or a More button, the highlight follows your finger in both directions and lifting selects whatever is under it. Slide onto More and it opens without ending the gesture, so the same finger can carry on into the new row. Actions and other sections take part; `data-navbar-no-swipe` on an item or section still opts out.
+
+## Popovers
+
+`createPopover` anchors a popover to an item, for example a Create action. Tapping or swiping to the item toggles it, and a small pointer stays aligned with the item when the popover shifts away from an edge or flips below.
+
+```ts
+const create = nav.querySelector<HTMLButtonElement>('#create')!;
+navbar.createPopover(create, [newNoteButton, newFolderButton], { label: 'Create' });
+```
+
+`createAnchoredPopover(trigger, content, options)` is exported for triggers outside the bar. Style it with `.lg-popover` and `--lg-popover-background`.
+
+## Badges
+
+```ts
+navbar.setBadge(chats, { count: 3, label: '3 unread' });
+navbar.setBadge(updates, { dot: true, label: 'New updates' });
+navbar.setBadge(sync, { status: 'warning', label: 'Sync paused' });
+navbar.setBadge(chats, null);
+```
+
+The label is announced with the item. When an item with a badge is behind More, More shows a dot. Colours: `--lg-nav-badge`, `--lg-nav-badge-color`.
+
+## Scroll compact and context actions
+
+```ts
+mountLiquidGlassNavbar(nav, { scrollCompact: { source: document.querySelector('#feed')! } });
+
+navbar.showContextActions([shareButton, moveButton, doneSection], { label: 'Actions for 2 files' });
+navbar.hideContextActions(); // restores the navigation and the tab that was selected
+```
+
+Small reversals and rubber-band overscroll don't change the bar. The nodes you pass to `showContextActions` are your own items (mark actions with `data-navbar-action`) or `[data-navbar-section]` groups; they are removed again when you leave.
+
+## Adaptive contrast
+
+Mark content with `data-navbar-backdrop`, listing `dark`, `light` and/or `busy`:
+
+```html
+<section data-navbar-backdrop="dark busy">...</section>
+```
+
+```ts
+mountLiquidGlassNavbar(nav, { transparency: 100, contrast: { adaptiveTint: true } });
+navbar.setBackdrop({ tone: 'dark' }); // or tell it yourself
+```
+
+Over dark content the icons and labels switch to `--lg-nav-on-dark-color` and `--lg-nav-on-dark-accent`, also with clear glass. With `adaptiveTint`, busy content adds tint (`{ busy: 34 }` by default) and quiet content clears it again; without it, clear glass keeps zero tint. The bar still uses the live backdrop.
+
+## Persistence
+
+The navbar doesn't store anything. Save the tab in `onSelect` and restore it with `select(item)`, even when the item is behind More.
 
 ## Pictures
 

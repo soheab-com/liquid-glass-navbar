@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0
+
+All new behavior is opt-in; the single-row bar is unchanged by default.
+
+- `layout: 'wrap' | 'rows'` lays the bar out in rows inside one glass surface or as one centered pill per row. Assign rows with `data-navbar-row`.
+- `overflow` moves items that don't fit into a More menu or an expanding row of glass icons (shared pill or individual icons), with `maxRows` and `maxVisible` limits. Measured from the real icons, labels, padding and gaps, and reflowed on resize. The current tab stays selected behind More.
+- Anchored popovers with a pointer that follows the trigger when shifted or flipped: `createPopover` for bar items and `createAnchoredPopover` for anything else.
+- Swipes move in two dimensions across rows and sections. Sliding onto More opens it without ending the gesture.
+- `scrollCompact` compacts the bar while scrolling down. `setBadge` adds count, dot and status badges. `showContextActions` temporarily swaps in contextual actions.
+- `contrast` and `setBackdrop` switch to a readable foreground over dark content and can add tint over busy content.
+- New `select(item)` for restoring a saved tab.
+- Refraction follows the rounded corners of multi-row surfaces.
+
 ## 0.5.5
 
 - Draw icons and labels once. The selected color now applies to the real tab, which prevents doubled glyphs in compact and expanded layouts.

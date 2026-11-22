@@ -9,7 +9,9 @@
   backdrop-filter: none;
 }
 .lg-navbar--enabled:not(.lg-navbar--sectioned)::before,
-.lg-navbar--enabled > [data-navbar-section]::before {
+.lg-navbar--enabled > [data-navbar-section]::before,
+.lg-navbar--enabled .lg-navbar__surface::before,
+.lg-navbar--enabled .lg-navbar__overflow--shared::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -22,7 +24,9 @@
   pointer-events: none;
 }
 .lg-navbar--enabled:not(.lg-navbar--sectioned)::after,
-.lg-navbar--enabled > [data-navbar-section]::after {
+.lg-navbar--enabled > [data-navbar-section]::after,
+.lg-navbar--enabled .lg-navbar__surface::after,
+.lg-navbar--enabled .lg-navbar__overflow--shared::after {
   content: "";
   position: absolute;
   inset: 1px;
@@ -33,7 +37,7 @@
   pointer-events: none;
 }
 .lg-navbar--custom-tint { --lg-nav-tint-surface: var(--lg-nav-opaque, #f5f9ff); }
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) {
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) {
   position: relative;
   display: grid;
   justify-items: center;
@@ -57,8 +61,8 @@
 .lg-navbar--enabled svg { width: 22px; height: 22px; }
 .lg-navbar__lens { display: none; }
 .lg-navbar--enabled { touch-action: pan-y; user-select: none; }
-.lg-navbar.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"]::before { opacity: 0; }
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { z-index: 2; will-change: transform; }
+.lg-navbar.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *)[aria-current="page"]::before { opacity: 0; }
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) { z-index: 2; will-change: transform; }
 .lg-navbar--enabled .lg-navbar__lens:not([hidden]) {
   display: block;
   position: absolute;
@@ -111,7 +115,7 @@
   gap: 1px;
   padding: 4px;
 }
-.lg-navbar > [data-navbar-section] > :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { min-width: 49px; }
+.lg-navbar > [data-navbar-section] > :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) { min-width: 49px; }
 .lg-navbar--vertical, .lg-navbar--vertical > [data-navbar-section] { flex-direction: column; }
 .lg-navbar--enabled.lg-navbar--vertical { touch-action: pan-x; }
 .lg-navbar[data-lg-navbar-position] {
@@ -134,25 +138,29 @@
 .lg-navbar--no-labels [data-navbar-label],
 .lg-navbar [data-navbar-hide-label] [data-navbar-label],
 .lg-navbar [data-navbar-hide-icon] [data-navbar-icon] { display: none; }
-.lg-navbar :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[hidden],
-.lg-navbar :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[data-navbar-hide-icon][data-navbar-hide-label] { display: none !important; }
-.lg-navbar--reordering :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { cursor: grab; }
-.lg-navbar--reordering.lg-navbar--dragging :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { cursor: grabbing; }
+.lg-navbar :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *)[hidden],
+.lg-navbar :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *)[data-navbar-hide-icon][data-navbar-hide-label] { display: none !important; }
+.lg-navbar--reordering :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) { cursor: grab; }
+.lg-navbar--reordering.lg-navbar--dragging :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) { cursor: grabbing; }
 @media (prefers-reduced-transparency: reduce) {
   .lg-navbar--enabled:not(.lg-navbar--custom-tint, .lg-navbar--sectioned)::before,
-  .lg-navbar--enabled:not(.lg-navbar--custom-tint) > [data-navbar-section]::before {
+  .lg-navbar--enabled:not(.lg-navbar--custom-tint) > [data-navbar-section]::before,
+  .lg-navbar--enabled:not(.lg-navbar--custom-tint) :is(.lg-navbar__surface, .lg-navbar__overflow--shared)::before {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
   .lg-navbar--enabled:not(.lg-navbar--custom-tint, .lg-navbar--sectioned)::after,
-  .lg-navbar--enabled:not(.lg-navbar--custom-tint) > [data-navbar-section]::after {
+  .lg-navbar--enabled:not(.lg-navbar--custom-tint) > [data-navbar-section]::after,
+  .lg-navbar--enabled:not(.lg-navbar--custom-tint) :is(.lg-navbar__surface, .lg-navbar__overflow--shared)::after {
     background: var(--lg-nav-opaque, #f5f9ff);
     opacity: 1;
   }
 }
 
 .lg-navbar--clear.lg-navbar--enabled:not(.lg-navbar--sectioned)::before,
-.lg-navbar--clear.lg-navbar--enabled > [data-navbar-section]::before {
+.lg-navbar--clear.lg-navbar--enabled > [data-navbar-section]::before,
+.lg-navbar--clear.lg-navbar--enabled .lg-navbar__surface::before,
+.lg-navbar--clear.lg-navbar--enabled .lg-navbar__overflow--shared::before {
   -webkit-backdrop-filter: none;
   backdrop-filter: var(--lg-nav-refraction-filter, none);
 }
@@ -177,7 +185,7 @@
   grid-auto-columns: auto;
 }
 /* Too long to fit: cut labels off with an ellipsis, or let the bar grow to the widest item times the count. */
-.lg-navbar--equal-truncate :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { min-width: 0; max-width: 100%; grid-template-columns: minmax(0, 1fr); }
+.lg-navbar--equal-truncate :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) { min-width: 0; max-width: 100%; grid-template-columns: minmax(0, 1fr); }
 .lg-navbar--equal-truncate > [data-navbar-section] { min-width: 0; }
 /* Size an unpinned truncate bar to its content as well. */
 .lg-navbar.lg-navbar--equal-truncate { width: max-content; }
@@ -188,18 +196,18 @@
 .lg-navbar--equal-grow.lg-navbar--vertical:not(.lg-navbar--sectioned), .lg-navbar--equal-grow.lg-navbar--vertical > [data-navbar-section] { grid-auto-rows: minmax(max-content, 1fr); }
 
 /* Recolor the actual glyphs so the lens never paints a second icon or label. */
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) {
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) {
   --_lg-item-icon: var(--lg-nav-icon-color, inherit);
   --_lg-item-label: var(--lg-nav-label-color, inherit);
 }
-.lg-navbar--enabled:not(.lg-navbar--dragging) :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"],
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *).lg-navbar__preview {
+.lg-navbar--enabled:not(.lg-navbar--dragging) :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *)[aria-current="page"],
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *).lg-navbar__preview {
   color: var(--lg-nav-accent, #2152a5);
   --_lg-item-icon: var(--lg-nav-icon-accent, inherit);
   --_lg-item-label: var(--lg-nav-label-accent, inherit);
 }
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-icon] { color: var(--_lg-item-icon); }
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-label] { color: var(--_lg-item-label); }
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) [data-navbar-icon] { color: var(--_lg-item-icon); }
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) [data-navbar-label] { color: var(--_lg-item-label); }
 
 /* Keep glyphs legible over a changing backdrop without recoloring them. */
 .lg-navbar--enabled :is([data-navbar-label], [data-navbar-icon]) {
@@ -217,18 +225,231 @@
     --_lg-contrast-edge: contrast-color(currentColor);
   }
 }
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-label] {
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) [data-navbar-label] {
   text-shadow:
     -.55px 0 var(--_lg-contrast-edge), .55px 0 var(--_lg-contrast-edge),
     0 -.55px var(--_lg-contrast-edge), 0 .55px var(--_lg-contrast-edge),
     0 0 2px var(--_lg-contrast-soft);
 }
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-icon] {
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) [data-navbar-icon] {
   filter: drop-shadow(0 0 .6px var(--_lg-contrast-edge))
     drop-shadow(0 0 .85px var(--_lg-contrast-soft));
 }
 
 /* Link tabs: no native drag ghost while swiping (the script also cancels dragstart). */
-.lg-navbar--enabled a:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { -webkit-user-drag: none; }
+.lg-navbar--enabled a:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) { -webkit-user-drag: none; }
 
 .lg-navbar__refraction-assets { position: absolute; width: 0; height: 0; pointer-events: none; }
+
+/* ---- 0.6: rows, overflow, popovers, badges, compact, context actions and adaptive contrast ---- */
+
+/* Multi-row layouts. The script sets the width to the widest row and places explicit row breaks. */
+.lg-navbar.lg-navbar--multirow,
+.lg-navbar.lg-navbar--multirow[data-lg-navbar-position] {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  box-sizing: border-box;
+  width: var(--_lg-rows-width, max-content);
+  max-width: none;
+}
+.lg-navbar--multirow > .lg-navbar__break { flex-basis: 100%; height: 0; }
+.lg-navbar.lg-navbar--enabled.lg-navbar--wrap:not(.lg-navbar--sectioned) {
+  padding: 6px;
+  row-gap: 2px;
+  border-radius: var(--lg-nav-wrap-radius, 30px);
+}
+.lg-navbar--wrap:not(.lg-navbar--sectioned)::before,
+.lg-navbar--wrap:not(.lg-navbar--sectioned)::after { border-radius: inherit !important; }
+.lg-navbar.lg-navbar--enabled.lg-navbar--split { row-gap: calc(8px + 2 * 4px); }
+.lg-navbar.lg-navbar--split::before, .lg-navbar.lg-navbar--split::after { display: none; }
+.lg-navbar--sectioned.lg-navbar--multirow { row-gap: 8px; }
+.lg-navbar__surface {
+  position: absolute;
+  z-index: 0;
+  border-radius: 999px;
+  pointer-events: none;
+}
+.lg-navbar__surface::before, .lg-navbar__surface::after { border-radius: inherit !important; }
+.lg-navbar--multirow.lg-navbar--equal :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) {
+  box-sizing: border-box;
+  width: var(--_lg-equal-width, auto);
+}
+.lg-navbar--equal.lg-navbar--multirow > [data-navbar-section] { display: flex; }
+@media (prefers-reduced-motion: no-preference) {
+  .lg-navbar--multirow .lg-navbar__lens:not([hidden]),
+  .lg-navbar--free .lg-navbar__lens:not([hidden]) {
+    transition: scale .32s var(--lg-nav-spring, cubic-bezier(.2, 1.4, .4, 1)), box-shadow .2s var(--lg-nav-ease, ease), top .14s ease-out, height .14s ease-out;
+  }
+}
+/* Gestures that move between rows need vertical movement too. */
+.lg-navbar--enabled.lg-navbar--free { touch-action: none; }
+.lg-navbar--lens-away .lg-navbar__lens { visibility: hidden; }
+
+/* More */
+.lg-navbar--enabled .lg-navbar__more[data-navbar-overflow-current] { color: var(--lg-nav-accent, #2152a5); }
+
+/* Anchored popovers */
+.lg-popover {
+  position: absolute;
+  z-index: var(--lg-popover-z, 20);
+  box-sizing: border-box;
+  min-width: 150px;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 4px;
+  border: 1px solid var(--lg-nav-rim, rgb(255 255 255 / .7));
+  border-radius: var(--lg-popover-radius, 16px);
+  background: var(--lg-popover-background, var(--lg-nav-opaque, #f5f9ff));
+  color: var(--lg-popover-color, var(--lg-nav-muted, #1b2a40));
+  box-shadow: 0 10px 28px var(--lg-nav-shadow, rgb(22 37 56 / .24));
+  font-family: var(--lg-nav-font, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif);
+  font-size: .9rem;
+  user-select: none;
+  transform-origin: var(--lg-popover-pointer-x, 50%) 100%;
+}
+.lg-popover[data-side="below"] { transform-origin: var(--lg-popover-pointer-x, 50%) 0; }
+.lg-popover[hidden] { display: none; }
+.lg-popover__pointer {
+  position: absolute;
+  left: var(--lg-popover-pointer-x, 50%);
+  top: 100%;
+  width: 11px;
+  height: 11px;
+  margin-top: -6px;
+  translate: -50% 0;
+  rotate: 45deg;
+  background: inherit;
+  border: inherit;
+  border-top-color: transparent;
+  border-left-color: transparent;
+  border-radius: 0 0 3px 0;
+  pointer-events: none;
+}
+.lg-popover[data-side="below"] .lg-popover__pointer { top: auto; bottom: 100%; margin: 0 0 -6px; rotate: 225deg; }
+.lg-popover__body { position: relative; overflow-y: auto; overscroll-behavior: contain; border-radius: inherit; }
+.lg-navbar__popover--expand .lg-popover__body { overflow: visible; }
+
+/* The More menu: the real items, laid out as rows. */
+.lg-navbar__overflow--menu { display: grid; gap: 1px; }
+.lg-navbar__overflow--menu > :is(button, a) {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 11px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 560;
+  text-align: start;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-user-drag: none;
+}
+.lg-navbar__overflow--menu svg { width: 19px; height: 19px; flex-shrink: 0; }
+.lg-navbar__overflow--menu [data-navbar-label] { display: inline !important; }
+.lg-navbar__overflow--menu > :is(button, a):is(:hover, :focus-visible, .lg-navbar__preview),
+.lg-navbar__overflow--menu > :is(button, a)[aria-current="page"] {
+  background: color-mix(in srgb, var(--lg-nav-accent, #2152a5) 13%, transparent);
+  color: var(--lg-nav-accent, #2152a5);
+}
+.lg-navbar__overflow--menu > :is(button, a)[hidden],
+.lg-navbar__overflow > :is(button, a)[data-navbar-hide-icon][data-navbar-hide-label] { display: none; }
+.lg-navbar__overflow--menu .lg-navbar__badge { position: static; margin-inline-start: auto; }
+
+/* The expanding row: icons in a shared pill or each in its own glass circle. */
+.lg-navbar__popover--expand {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  box-shadow: none;
+  font-size: inherit;
+}
+.lg-navbar__popover--expand .lg-popover__pointer {
+  background: var(--lg-nav-surface, rgb(245 249 255 / .78));
+  border: 1px solid var(--lg-nav-rim, rgb(255 255 255 / .7));
+  border-top-color: transparent;
+  border-left-color: transparent;
+  margin-top: -5px;
+}
+.lg-navbar__overflow--expand { position: static; display: flex; justify-content: center; gap: 1px; }
+.lg-navbar__overflow--shared { position: relative; padding: 4px; border-radius: 999px; }
+.lg-navbar__overflow--individual { gap: 8px; }
+.lg-navbar__overflow--expand > :is(button, a):has([data-navbar-icon]) [data-navbar-label] { display: none; }
+.lg-navbar__overflow--expand > :is(button, a) { min-width: 49px; }
+
+/* Badges */
+.lg-navbar__badge {
+  position: absolute;
+  z-index: 3;
+  top: 3px;
+  inset-inline-end: 4px;
+  box-sizing: border-box;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--lg-nav-badge, #d92d4c);
+  color: var(--lg-nav-badge-color, #fff);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  text-shadow: none !important;
+  pointer-events: none;
+}
+.lg-navbar__badge[hidden] { display: none; }
+.lg-navbar__badge:is([data-kind="dot"], [data-kind="status"]) { min-width: 0; width: 9px; height: 9px; padding: 0; top: 7px; inset-inline-end: 9px; }
+.lg-navbar__badge[data-tone="info"] { background: var(--lg-nav-badge-info, #2f7bf5); }
+.lg-navbar__badge[data-tone="success"] { background: var(--lg-nav-badge-success, #1f9d55); }
+.lg-navbar__badge[data-tone="warning"] { background: var(--lg-nav-badge-warning, #e8a317); }
+.lg-navbar__sr {
+  position: absolute !important;
+  width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+
+/* Compact: icons only. Compact-capable bars skip effects that leave a stale copy of the glyph in Safari while
+   the tabs resize. */
+.lg-navbar--compact :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *):has([data-navbar-icon]):not([data-navbar-hide-icon]) [data-navbar-label] { display: none; }
+.lg-navbar--compactable.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) { will-change: auto; }
+.lg-navbar--compactable.lg-navbar--enabled :is(button, a) [data-navbar-icon] { filter: none; }
+
+/* Context actions replace the navigation until the app leaves context mode. */
+.lg-navbar--context > :not([data-navbar-context], .lg-navbar__lens, .lg-navbar__refraction-assets) { display: none !important; }
+
+/* Adaptive contrast: a readable foreground over dark content, also with clear glass. */
+.lg-navbar--enabled[data-lg-navbar-backdrop="dark"] :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) {
+  color: var(--lg-nav-on-dark-color, #f3f8ff);
+  --_lg-item-icon: var(--lg-nav-on-dark-color, #f3f8ff);
+  --_lg-item-label: var(--lg-nav-on-dark-color, #f3f8ff);
+}
+.lg-navbar--enabled[data-lg-navbar-backdrop="dark"]:not(.lg-navbar--dragging) :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *)[aria-current="page"],
+.lg-navbar--enabled[data-lg-navbar-backdrop="dark"] :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *).lg-navbar__preview,
+.lg-navbar--enabled[data-lg-navbar-backdrop="dark"] .lg-navbar__more[data-navbar-overflow-current] {
+  color: var(--lg-nav-on-dark-accent, #a9d1ff);
+  --_lg-item-icon: var(--lg-nav-on-dark-accent, #a9d1ff);
+  --_lg-item-label: var(--lg-nav-on-dark-accent, #a9d1ff);
+}
+.lg-navbar--enabled[data-lg-navbar-backdrop="dark"] {
+  --lg-nav-rim: var(--lg-nav-on-dark-rim, rgb(255 255 255 / .4));
+  --lg-nav-highlight: var(--lg-nav-on-dark-highlight, rgb(255 255 255 / .45));
+  --lg-nav-tint-surface: var(--lg-nav-on-dark-surface, #263a52);
+}
+.lg-navbar--enabled[data-lg-navbar-backdrop="light"] :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) {
+  color: var(--lg-nav-on-light-color, var(--lg-nav-muted, inherit));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lg-navbar--enabled:not(.lg-navbar--sectioned)::after,
+  .lg-navbar--enabled > [data-navbar-section]::after,
+  .lg-navbar--enabled .lg-navbar__surface::after { transition: opacity .15s ease, background-color .15s ease; }
+}

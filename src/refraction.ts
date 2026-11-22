@@ -10,7 +10,7 @@ function svgElement<K extends keyof SVGElementTagNameMap>(
   return element;
 }
 
-function rimMap(width: number, height: number): string | null {
+function rimMap(width: number, height: number, corner: number): string | null {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -18,7 +18,7 @@ function rimMap(width: number, height: number): string | null {
   if (!context) return null;
 
   const image = context.createImageData(width, height);
-  const radius = Math.min(width, height) / 2;
+  const radius = Math.max(4, Math.min(corner, width / 2, height / 2));
   const rim = Math.min(22, radius * .6);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -47,6 +47,7 @@ interface RefractionLayer {
   filter: SVGFilterElement;
   width: number;
   height: number;
+  radius: number;
 }
 
 export function supportsBackdropRefraction(): boolean {
@@ -69,7 +70,7 @@ export function mountRefraction(nav: HTMLElement) {
     });
     assets.append(filter);
     observer.observe(target);
-    return { filter, width: 0, height: 0 };
+    return { filter, width: 0, height: 0, radius: 0 };
   }
 
   function paint(): void {
@@ -88,11 +89,14 @@ export function mountRefraction(nav: HTMLElement) {
       const height = Math.round(rect.height);
       if (width < 8 || height < 8) continue;
 
-      if (width !== layer.width || height !== layer.height) {
-        const map = rimMap(width, height);
+      // Pills use half their height; multi-row surfaces have smaller rounded corners.
+      const radius = Math.round(Math.min(parseFloat(getComputedStyle(target).borderTopLeftRadius) || Infinity, width / 2, height / 2));
+      if (width !== layer.width || height !== layer.height || radius !== layer.radius) {
+        const map = rimMap(width, height, radius);
         if (!map) continue;
         layer.width = width;
         layer.height = height;
+        layer.radius = radius;
         const pad = 20;
         for (const [name, value] of Object.entries({ x: -pad, y: -pad, width: width + 2 * pad, height: height + 2 * pad })) {
           layer.filter.setAttribute(name, String(value));

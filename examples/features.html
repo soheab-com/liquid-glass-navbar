@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liquid Glass Navbar 0.6 features</title>
+<link rel="stylesheet" href="../src/navbar.css">
+<style>
+  body { margin: 0; font: 15px/1.4 system-ui, sans-serif; background: #eef3fa; color: #152238; }
+  .scene { position: relative; width: min(100%, 440px); height: 330px; margin: 16px auto; border: 1px solid #b9c9dc; border-radius: 22px; overflow: hidden; background: #e6eef8; }
+  .scene h2 { margin: 14px 16px; font-size: 18px; }
+  .dock { position: absolute; inset: auto 8px 10px; display: grid; justify-items: center; }
+  .scene nav { display: flex; --lg-nav-muted: #152238; --lg-nav-accent: #1454aa; }
+  .feed { position: absolute; inset: 48px 0 0; overflow-y: auto; }
+  .feed article { min-height: 260px; padding: 16px; }
+  .feed .night { background: #142235; color: #e7f1ff; }
+  #status { display: block; text-align: center; min-height: 20px; }
+</style>
+<body>
+<output id="status" aria-live="polite"></output>
+<section class="scene" id="wrap"><h2>Wrap into rows</h2><div class="dock"><nav aria-label="Wrap"></nav></div></section>
+<section class="scene" id="rows"><h2>Separate pills</h2><div class="dock"><nav aria-label="Rows"></nav></div></section>
+<section class="scene" id="manual"><h2>Manual rows</h2><div class="dock"><nav aria-label="Manual"></nav></div></section>
+<section class="scene" id="limit"><h2>Row limit + More</h2><div class="dock"><nav aria-label="Limit"></nav></div></section>
+<section class="scene" id="overflow"><h2>Responsive overflow</h2><div class="dock"><nav aria-label="Overflow"></nav></div></section>
+<section class="scene" id="expand"><h2>More expands</h2><div class="dock"><nav aria-label="Expand"></nav></div></section>
+<section class="scene" id="create"><h2>Create popover, badges, context</h2><div class="dock"><nav aria-label="Create"></nav></div></section>
+<section class="scene" id="compact"><h2>Scroll compact + contrast</h2>
+  <div class="feed"><article data-navbar-backdrop="light"><p>Light story.</p></article><article class="night" data-navbar-backdrop="dark busy"><p>Night story.</p></article><article><p>End</p></article><article><p>More</p></article></div>
+  <div class="dock"><nav aria-label="Compact"></nav></div></section>
+<script type="module" src="./features.js"></script>
+</body>
+</html>
