@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- The glass rim refracts the live backdrop in Chromium. An optional `refractionSource` provides a scroll-synced fallback for Safari.
+- The transparency setting controls both tint and blur. At 100%, only the rim, shadows, and refraction remain.
+- Color overrides now preserve and restore the original inline theme values.
+
 ## 0.3.0
 
 - Tabs can be links now. Put `<a href>` elements in the bar instead of buttons and every tab is its own page: tapping one, or ending a swipe on it, follows the link. Callbacks get the link (`NavbarItem` is a button or a link).

@@ -16,10 +16,9 @@
   z-index: 0;
   border: 1px solid var(--lg-nav-rim, rgb(255 255 255 / .7));
   border-radius: 999px;
-  background: linear-gradient(155deg, color-mix(in srgb, var(--lg-nav-highlight, rgb(255 255 255 / .9)) 28%, transparent), transparent 56%);
   box-shadow: inset 0 1px 0 var(--lg-nav-highlight, rgb(255 255 255 / .9)), 0 10px 28px var(--lg-nav-shadow, rgb(22 37 56 / .24));
-  -webkit-backdrop-filter: blur(24px) saturate(1.65);
-  backdrop-filter: blur(24px) saturate(1.65);
+  -webkit-backdrop-filter: blur(calc(16px * var(--lg-nav-tint, .4))) saturate(calc(1 + .55 * var(--lg-nav-tint, .4)));
+  backdrop-filter: var(--lg-nav-refraction-filter, blur(0px)) blur(calc(16px * var(--lg-nav-tint, .4))) saturate(calc(1 + .55 * var(--lg-nav-tint, .4)));
   pointer-events: none;
 }
 .lg-navbar--enabled:not(.lg-navbar--sectioned)::after,
@@ -59,7 +58,7 @@
 .lg-navbar__lens { display: none; }
 .lg-navbar--enabled { touch-action: pan-y; user-select: none; }
 .lg-navbar.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"]::before { opacity: 0; }
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { z-index: 2; }
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { z-index: 2; will-change: transform; }
 .lg-navbar--enabled .lg-navbar__lens:not([hidden]) {
   display: block;
   position: absolute;
@@ -67,9 +66,7 @@
   z-index: 1;
   pointer-events: none;
   border-radius: 999px;
-  background:
-    linear-gradient(159deg, var(--lg-nav-highlight, rgb(255 255 255 / .9)), transparent 52%),
-    color-mix(in srgb, var(--lg-nav-accent, #2152a5) 11%, var(--lg-nav-surface, rgb(245 249 255 / .78)));
+  background: color-mix(in srgb, var(--lg-nav-highlight, white) calc(45% * var(--lg-nav-tint, .4)), transparent);
   box-shadow: inset 0 1px 0 var(--lg-nav-highlight, rgb(255 255 255 / .9)), inset 0 0 0 1px var(--lg-nav-rim, rgb(255 255 255 / .7)), 0 2px 6px var(--lg-nav-shadow, rgb(22 37 56 / .24));
   transition: scale .32s var(--lg-nav-spring, cubic-bezier(.2, 1.4, .4, 1)), box-shadow .2s var(--lg-nav-ease, ease);
 }
@@ -109,6 +106,7 @@
 }
 .lg-navbar > [data-navbar-section] {
   position: relative;
+  border-radius: 999px;
   display: flex;
   align-items: stretch;
   gap: 1px;
@@ -140,17 +138,29 @@
 .lg-navbar--reordering :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { cursor: grab; }
 .lg-navbar--reordering.lg-navbar--dragging :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { cursor: grabbing; }
 @media (prefers-reduced-transparency: reduce) {
-  .lg-navbar--enabled:not(.lg-navbar--sectioned)::before,
-  .lg-navbar--enabled > [data-navbar-section]::before {
+  .lg-navbar--enabled:not(.lg-navbar--custom-tint, .lg-navbar--sectioned)::before,
+  .lg-navbar--enabled:not(.lg-navbar--custom-tint) > [data-navbar-section]::before {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
-  .lg-navbar--enabled:not(.lg-navbar--sectioned)::after,
-  .lg-navbar--enabled > [data-navbar-section]::after {
+  .lg-navbar--enabled:not(.lg-navbar--custom-tint, .lg-navbar--sectioned)::after,
+  .lg-navbar--enabled:not(.lg-navbar--custom-tint) > [data-navbar-section]::after {
     background: var(--lg-nav-opaque, #f5f9ff);
     opacity: 1;
   }
 }
+
+.lg-navbar--clear.lg-navbar--enabled:not(.lg-navbar--sectioned)::before,
+.lg-navbar--clear.lg-navbar--enabled > [data-navbar-section]::before {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: var(--lg-nav-refraction-filter, none);
+}
+.lg-navbar--clear.lg-navbar--enabled .lg-navbar__lens:not([hidden]) {
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 /* Equal width: every item takes the widest item's size, so the lens is the same everywhere. The script drops the
    class when a label would no longer fit (setEqualWidth). */
 .lg-navbar--equal:not(.lg-navbar--sectioned),
@@ -180,7 +190,7 @@
    lens covers. */
 .lg-navbar__ink { display: none; }
 .lg-navbar--enabled > .lg-navbar__ink {
-  display: block; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  display: block; position: absolute; inset: 0; z-index: 3; pointer-events: none; will-change: transform;
   /* Copies left at an old layout must never widen the bar: hosts measure its scroll width. */
   overflow: hidden;
   color: var(--lg-nav-accent, #2152a5);
@@ -204,3 +214,25 @@
 
 /* Link tabs: no native drag ghost while swiping (the script also cancels dragstart). */
 .lg-navbar--enabled a:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { -webkit-user-drag: none; }
+
+
+/* Refraction uses a clipped copy of the source, including in browsers without SVG backdrop filters. */
+.lg-navbar__refraction-assets { position: absolute; width: 0; height: 0; pointer-events: none; }
+.lg-navbar__refraction {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.lg-navbar__refraction-view { position: absolute; inset: 0; }
+.lg-navbar__refraction-content {
+  position: absolute !important;
+  inset: 0 auto auto 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}

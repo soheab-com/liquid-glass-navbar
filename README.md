@@ -14,7 +14,7 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 It isn't on npm. Install it from GitHub:
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.3.0'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.4.0'
 ```
 
 You need a bundler (Vite, esbuild, webpack and so on), because the package ships TypeScript and CSS.
@@ -78,6 +78,23 @@ To split the bar into separate pills, wrap groups of buttons in `data-navbar-sec
 
 Give icon-only buttons an `aria-label`, so screen readers have something to read.
 
+## Refraction
+
+On browsers that support SVG backdrop filters, the glass bends the actual text, images, and colors behind it. No extra markup is needed.
+
+For a similar effect in Safari, optionally pass a separate, presentational content element as `refractionSource`. Keep the navbar outside this element. Use classes for the source content's styling and give its viewport an opaque background so the refracted copy replaces the text beneath it cleanly.
+
+```ts
+const content = document.querySelector<HTMLElement>('.page-content');
+mountLiquidGlassNavbar(nav, {
+  position: 'bottom',
+  transparency: 100,
+  refractionSource: content ?? undefined,
+});
+```
+
+The displacement map is generated in the browser. Sites with a Content Security Policy need `data:` in `img-src` for this effect.
+
 ## Options
 
 Pass these to `mountLiquidGlassNavbar`. All of them are optional.
@@ -90,7 +107,8 @@ Pass these to `mountLiquidGlassNavbar`. All of them are optional.
 | `equalWidthOverflow` | What equal widths do when the bar is too narrow. `'natural'` (the default) goes back to normal widths until there's room. `'truncate'` keeps them equal and cuts long labels off with "…". `'grow'` keeps them equal and lets the bar get wider, so your layout has to make room. |
 | `colors` | Tab colours, see [Colours](#colours). |
 | `background` | Any CSS background, like `'#adc9ef'` or a gradient, to tint the glass. |
-| `transparency` | How see-through that tint is, from `0` (solid) to `100` (clear). |
+| `transparency` | Adjusts glass tint, blur, and refraction from `0` (solid) to `100` (clear with a refractive rim). |
+| `refractionSource` | Optional content element to mirror in browsers without native SVG backdrop refraction. |
 | `reorderable` | `true` lets people reorder tabs, see [Reordering](#reordering). |
 | `autoSelect` | `false` stops the navbar from moving `aria-current` itself. Use this with a router: change `aria-current` yourself, then call `sync()`. |
 | `enabled` | A function that returns `false` to switch the glass off, for example in a theme that shouldn't have it. |
@@ -143,7 +161,7 @@ If you prefer CSS, set the same colours as variables on the nav. `--lg-nav-accen
 
 Press a tab and slide along the bar. The highlight follows your finger and swells into a clear bubble. Only the part of a tab under the bubble lights up, so halfway between two tabs you see half of each. Let go and it settles on the nearest tab, keeping the speed you let go at. Pull past the first or last tab and it stretches like a rubber band instead of stopping dead.
 
-People who turn on Reduce Motion get the same result without the animation, and Reduce Transparency swaps the glass for a solid colour.
+People who turn on Reduce Motion get the same result without the animation, and Reduce Transparency swaps the default glass for a solid colour. An explicit transparency setting takes precedence.
 
 ## Reordering
 

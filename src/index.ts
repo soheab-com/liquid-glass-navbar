@@ -1,3 +1,4 @@
+import { mountRefraction, supportsBackdropRefraction } from './refraction.js';
 import { createSpring, rubberBanded } from './spring.js';
 
 export type NavbarPosition = 'top' | 'bottom' | 'left' | 'right';
@@ -35,6 +36,8 @@ export interface LiquidGlassNavbarOptions {
   equalWidthOverflow?: EqualWidthOverflow;
   background?: string;
   transparency?: number;
+  /** Presentational backdrop to mirror in browsers without native SVG backdrop refraction. */
+  refractionSource?: HTMLElement | undefined;
   colors?: NavbarColors;
   reorderable?: boolean;
 }
@@ -80,6 +83,11 @@ const isAvailable = (button: NavbarItem): boolean => !button.hidden
   && !(button.hasAttribute('data-navbar-hide-icon') && button.hasAttribute('data-navbar-hide-label'));
 
 export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNavbarOptions): LiquidGlassNavbar {
+  const source = options.refractionSource;
+  if (source && (source.contains(nav) || nav.contains(source))) {
+    throw new Error('The refraction source and navbar must be separate elements.');
+  }
+
   const listeners = new AbortController();
   const { signal } = listeners;
   const lens = document.createElement('span');
@@ -94,6 +102,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   nav.classList.add('lg-navbar');
   nav.prepend(lens);
   nav.append(ink);
+  const nativeRefraction = supportsBackdropRefraction();
+  const refraction = nativeRefraction || source ? mountRefraction(nav, nativeRefraction, source) : undefined;
 
   let placement = options.position;
   let reorderMode = false;
@@ -190,7 +200,9 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     if (signal.aborted) return;
     const isEnabled = enabled();
     nav.classList.toggle('lg-navbar--enabled', isEnabled);
-    nav.classList.toggle('lg-navbar--sectioned', sections().length > 1);
+    const groups = sections().slice(1);
+    nav.classList.toggle('lg-navbar--sectioned', groups.length > 0);
+    refraction?.sync(isEnabled ? (groups.length ? groups : [nav]) : []);
     labelItems();
     fitEqualWidth();
     paintInk();
@@ -438,11 +450,18 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     unselectedIcon: '--lg-nav-icon-color',
     unselectedLabel: '--lg-nav-label-color',
   };
+  const originalColors = new Map(Object.values(COLOR_VARIABLES).map((variable) => [
+    variable, { value: nav.style.getPropertyValue(variable), priority: nav.style.getPropertyPriority(variable) },
+  ]));
   function setColors(colors: NavbarColors = {}): void {
     for (const [key, variable] of Object.entries(COLOR_VARIABLES) as [keyof NavbarColors, string][]) {
       const value = colors[key];
       if (value) nav.style.setProperty(variable, value);
-      else nav.style.removeProperty(variable);
+      else {
+        const original = originalColors.get(variable);
+        if (original?.value) nav.style.setProperty(variable, original.value, original.priority);
+        else nav.style.removeProperty(variable);
+      }
     }
   }
 
@@ -451,6 +470,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       throw new RangeError('Navbar transparency must be between 0 and 100.');
     }
     nav.classList.toggle('lg-navbar--custom-tint', percentage !== undefined);
+    nav.classList.toggle('lg-navbar--clear', percentage === 100);
+    refraction?.setTransparency(percentage);
     if (percentage === undefined) nav.style.removeProperty('--lg-nav-tint');
     else nav.style.setProperty('--lg-nav-tint', String(1 - percentage / 100));
   }
@@ -487,6 +508,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     reorder,
     destroy() {
       listeners.abort();
+      refraction?.destroy();
       observer.disconnect();
       spring.stop();
       if (gesture && nav.hasPointerCapture(gesture.id)) nav.releasePointerCapture(gesture.id);
