@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0
+
+- Removed the copied backdrop and its `refractionSource` option. Safari now uses live blur and tint without a cached copy of the content. Chromium continues to bend the live backdrop.
+
 ## 0.4.0
 
 - The glass rim refracts the live backdrop in Chromium. An optional `refractionSource` provides a scroll-synced fallback for Safari.

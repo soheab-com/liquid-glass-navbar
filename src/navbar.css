@@ -215,24 +215,4 @@
 /* Link tabs: no native drag ghost while swiping (the script also cancels dragstart). */
 .lg-navbar--enabled a:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { -webkit-user-drag: none; }
 
-
-/* Refraction uses a clipped copy of the source, including in browsers without SVG backdrop filters. */
 .lg-navbar__refraction-assets { position: absolute; width: 0; height: 0; pointer-events: none; }
-.lg-navbar__refraction {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  border-radius: inherit;
-  pointer-events: none;
-}
-.lg-navbar__refraction-view { position: absolute; inset: 0; }
-.lg-navbar__refraction-content {
-  position: absolute !important;
-  inset: 0 auto auto 0 !important;
-  margin: 0 !important;
-  box-sizing: border-box !important;
-  border: 0 !important;
-  overflow: hidden !important;
-  pointer-events: none !important;
-}

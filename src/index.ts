@@ -36,8 +36,6 @@ export interface LiquidGlassNavbarOptions {
   equalWidthOverflow?: EqualWidthOverflow;
   background?: string;
   transparency?: number;
-  /** Presentational backdrop to mirror in browsers without native SVG backdrop refraction. */
-  refractionSource?: HTMLElement | undefined;
   colors?: NavbarColors;
   reorderable?: boolean;
 }
@@ -83,11 +81,6 @@ const isAvailable = (button: NavbarItem): boolean => !button.hidden
   && !(button.hasAttribute('data-navbar-hide-icon') && button.hasAttribute('data-navbar-hide-label'));
 
 export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNavbarOptions): LiquidGlassNavbar {
-  const source = options.refractionSource;
-  if (source && (source.contains(nav) || nav.contains(source))) {
-    throw new Error('The refraction source and navbar must be separate elements.');
-  }
-
   const listeners = new AbortController();
   const { signal } = listeners;
   const lens = document.createElement('span');
@@ -102,8 +95,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   nav.classList.add('lg-navbar');
   nav.prepend(lens);
   nav.append(ink);
-  const nativeRefraction = supportsBackdropRefraction();
-  const refraction = nativeRefraction || source ? mountRefraction(nav, nativeRefraction, source) : undefined;
+  const refraction = supportsBackdropRefraction() ? mountRefraction(nav) : undefined;
 
   let placement = options.position;
   let reorderMode = false;
