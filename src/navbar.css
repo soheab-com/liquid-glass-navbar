@@ -123,6 +123,8 @@
 .lg-navbar[data-lg-navbar-position="top"], .lg-navbar[data-lg-navbar-position="bottom"] {
   left: 50%;
   translate: -50% 0;
+  width: max-content;
+  justify-content: center;
   max-width: calc(100% - 2 * var(--lg-nav-offset, 12px));
 }
 .lg-navbar[data-lg-navbar-position="top"] { top: max(var(--lg-nav-offset, 12px), env(safe-area-inset-top)); }
@@ -178,7 +180,7 @@
 /* Too long to fit: cut labels off with an ellipsis, or let the bar grow to the widest item times the count. */
 .lg-navbar--equal-truncate :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { min-width: 0; max-width: 100%; grid-template-columns: minmax(0, 1fr); }
 .lg-navbar--equal-truncate > [data-navbar-section] { min-width: 0; }
-/* Centred bars sit at left: 50%, which would cap a shrinkable bar at half the screen: size to the content, max-width caps it. */
+/* Size an unpinned truncate bar to its content as well. */
 .lg-navbar.lg-navbar--equal-truncate { width: max-content; }
 .lg-navbar--equal-truncate [data-navbar-label] { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .lg-navbar.lg-navbar--equal-grow, .lg-navbar.lg-navbar--equal-grow[data-lg-navbar-position], .lg-navbar--equal-grow > [data-navbar-section] { max-width: none; }

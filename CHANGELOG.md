@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2
+
+- Center edge-pinned navbars across the full group of pills, including when equal-width tabs grow the bar.
+
 ## 0.5.1
 
 - Added contrast outlines to navbar labels and icons, including the selected tab, for readability over changing backdrops.
