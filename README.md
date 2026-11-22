@@ -185,7 +185,7 @@ With `reorderable: true`, people can move a focused tab with Alt and the arrow k
 
 ## Rows and More
 
-Everything here is optional; a bar without these options behaves as before. Multi-row layouts and More apply to bars along the top or bottom, or bars you place yourself.
+Everything here is optional; without these options the bar is a single row. Multi-row layouts and More apply to bars along the top or bottom, or bars you place yourself.
 
 ```ts
 mountLiquidGlassNavbar(nav, { layout: 'wrap' });             // rows inside one glass surface
@@ -205,7 +205,7 @@ More closes when another tab is pressed, on an outside press, after a selection,
 
 ## Swiping across rows
 
-When the bar has rows or a More button, the highlight follows your finger in both directions and lifting selects whatever is under it. Slide onto More and it opens without ending the gesture, so the same finger can carry on into the new row. Actions and other sections take part; `data-navbar-no-swipe` on an item or section still opts out.
+When the bar has rows or a More button, the highlight follows your finger in both directions and lifting selects whatever is under it. Slide onto More and it opens without ending the gesture, so the same finger can carry on into the new row. Actions and other sections take part; `data-navbar-no-swipe` on an item or section opts it out.
 
 ## Popovers
 
@@ -253,7 +253,7 @@ mountLiquidGlassNavbar(nav, { transparency: 100, contrast: { adaptiveTint: true 
 navbar.setBackdrop({ tone: 'dark' }); // or tell it yourself
 ```
 
-Over dark content the icons and labels switch to `--lg-nav-on-dark-color` and `--lg-nav-on-dark-accent`, also with clear glass. With `adaptiveTint`, busy content adds tint (`{ busy: 34 }` by default) and quiet content clears it again; without it, clear glass keeps zero tint. The bar still uses the live backdrop.
+Over dark content the icons and labels switch to `--lg-nav-on-dark-color` and `--lg-nav-on-dark-accent`, also with clear glass. With `adaptiveTint`, busy content adds tint (`{ busy: 34 }` by default) and quiet content clears it again; without it, clear glass keeps zero tint. Both work on the live backdrop, without copying the page behind the bar.
 
 ## Magnify
 
