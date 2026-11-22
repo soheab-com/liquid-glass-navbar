@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.5
+
+- Draw icons and labels once. The selected color now applies to the real tab, which prevents doubled glyphs in compact and expanded layouts.
+
 ## 0.5.4
 
 - Start a swipe from action items as well as tabs. Add `data-navbar-no-swipe` to an item or section to keep it out of gestures.

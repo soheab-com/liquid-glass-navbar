@@ -62,9 +62,6 @@ interface Gesture {
   draggedItem: NavbarItem | null;
 }
 
-const INK_STYLES = ['font', 'letter-spacing', 'text-transform', 'line-height', 'padding', 'gap', 'justify-items',
-  'align-content', 'grid-template-columns', 'grid-auto-flow', 'display', 'flex-direction', 'align-items', 'justify-content'];
-
 /** A tab or action: a `<button>`, or an `<a href>` for sites where each tab is its own page. */
 export type NavbarItem = HTMLButtonElement | HTMLAnchorElement;
 
@@ -87,15 +84,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   const lens = document.createElement('span');
   lens.className = 'lg-navbar__lens';
   lens.setAttribute('aria-hidden', 'true');
-  // The ink: an accent-coloured copy of the items, clipped to the lens, so only the part of an icon or label that
-  // the lens is over lights up (like iOS), also halfway between two items while dragging.
-  const ink = document.createElement('span');
-  ink.className = 'lg-navbar__ink';
-  ink.setAttribute('aria-hidden', 'true');
-  ink.inert = true;
   nav.classList.add('lg-navbar');
   nav.prepend(lens);
-  nav.append(ink);
   const refraction = supportsBackdropRefraction() ? mountRefraction(nav) : undefined;
 
   let placement = options.position;
@@ -111,7 +101,6 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   let lensSize = 0;
   const spring = createSpring(0, (offset) => {
     lens.style.translate = vertical() ? `0 ${offset}px` : `${offset}px 0`;
-    clipInk(offset);
   }, { response: .38, dampingRatio: .78 });
   let releaseVelocity: { value: number; at: number } | undefined;
   let samples: { position: number; time: number }[] = [];
@@ -144,39 +133,6 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     lens.style.top = vertical() ? '0' : `${top}px`;
     lensSize = vertical() ? height : width;
     lens.hidden = false;
-    clipInk(spring.value);
-  }
-
-  // Copies of the items, laid exactly over the real ones. Rebuilt on every sync (items, labels and sizes change).
-  function paintInk(): void {
-    const copies = items().filter(isAvailable).map((button) => {
-      const { left, top } = offsetOf(button);
-      const copy = document.createElement('span');
-      copy.className = 'lg-navbar__ink-item';
-      copy.style.cssText = `left:${left}px;top:${top}px;width:${button.offsetWidth}px;height:${button.offsetHeight}px`;
-      // Same type and spacing as the real item, even when the host restyles its buttons.
-      const style = getComputedStyle(button);
-      for (const name of INK_STYLES) copy.style.setProperty(name, style.getPropertyValue(name));
-      for (const name of ['data-navbar-hide-icon', 'data-navbar-hide-label']) {
-        if (button.hasAttribute(name)) copy.setAttribute(name, '');
-      }
-      for (const child of button.children) {
-        if (child.matches('[data-navbar-icon], [data-navbar-label]')) copy.append(child.cloneNode(true));
-      }
-      copy.querySelectorAll('[id]').forEach((node) => node.removeAttribute('id'));
-      return copy;
-    });
-    ink.replaceChildren(...copies);
-  }
-
-  function clipInk(offset: number): void {
-    if (lens.hidden) { ink.style.clipPath = 'inset(50%)'; return; }
-    const radius = Math.min(lens.offsetWidth, lens.offsetHeight) / 2;
-    const left = vertical() ? lens.offsetLeft : offset;
-    const top = vertical() ? offset : lens.offsetTop;
-    const right = nav.clientWidth - left - lens.offsetWidth;
-    const bottom = nav.clientHeight - top - lens.offsetHeight;
-    ink.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px round ${radius}px)`;
   }
 
   function labelItems(): void {
@@ -198,12 +154,10 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     refraction?.sync(isEnabled ? (groups.length ? groups : [nav]) : []);
     labelItems();
     fitEqualWidth();
-    paintInk();
     const active = tabs().find((button) => button.getAttribute('aria-current') === 'page');
     if (!active) {
       lens.hidden = true;
       spring.stop();
-      clipInk(0);
       return;
     }
     placeLens(active);
@@ -514,7 +468,6 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       setColors();
       for (const name of [...nav.classList]) if (name === 'lg-navbar' || name.startsWith('lg-navbar--')) nav.classList.remove(name);
       lens.remove();
-      ink.remove();
     },
   };
 }

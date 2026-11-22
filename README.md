@@ -6,7 +6,7 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/mockups/showcase-dark.gif">
-  <img src="docs/mockups/showcase.gif" alt="Tapping between tabs, then dragging the highlight across the bar: it swells into a bubble, lights up only the part of each tab it covers, stretches past the first tab and springs back">
+  <img src="docs/mockups/showcase.gif" alt="Tapping between tabs, then dragging the highlight across the bar: it swells into a bubble, highlights the nearest tab, stretches past the first tab and springs back">
 </picture>
 
 ## Install
@@ -14,7 +14,7 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 It isn't on npm. Install it from GitHub:
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.5.4'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.5.5'
 ```
 
 You need a bundler (Vite, esbuild, webpack and so on), because the package ships TypeScript and CSS.
@@ -130,7 +130,7 @@ Pass these to `mountLiquidGlassNavbar`. All of them are optional.
 
 ## Colours
 
-Tabs have two states. Selected is whatever the highlight is over: the current tab, or the part of a tab you're dragging across. Unselected is everything else.
+Tabs have two states. Selected is whatever the highlight is over: the current tab, or the nearest tab while you drag. Unselected is everything else.
 
 ```ts
 navbar.setColors({
@@ -153,7 +153,7 @@ If you prefer CSS, set the same colours as variables on the nav. `--lg-nav-accen
 
 ## Dragging
 
-Press a tab and slide along the bar. The highlight follows your finger and swells into a clear bubble. Only the part of a tab under the bubble lights up, so halfway between two tabs you see half of each. Let go and it settles on the nearest tab, keeping the speed you let go at. Pull past the first or last tab and it stretches like a rubber band instead of stopping dead.
+Press a tab and slide along the bar. The highlight follows your finger and swells into a clear bubble. The tab closest to the bubble takes the selected color. Let go and it settles on the nearest tab, keeping the speed you let go at. Pull past the first or last tab and it stretches like a rubber band instead of stopping dead.
 
 People who turn on Reduce Motion get the same result without the animation, and Reduce Transparency swaps the default glass for a solid colour. An explicit transparency setting takes precedence.
 

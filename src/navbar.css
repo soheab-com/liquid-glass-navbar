@@ -54,7 +54,6 @@
   font-weight: 600;
   text-decoration: none;
 }
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"] { color: var(--lg-nav-accent, #2152a5); }
 .lg-navbar--enabled svg { width: 22px; height: 22px; }
 .lg-navbar__lens { display: none; }
 .lg-navbar--enabled { touch-action: pan-y; user-select: none; }
@@ -91,13 +90,9 @@
   -webkit-backdrop-filter: blur(1.5px) saturate(1.6) brightness(1.08);
   backdrop-filter: blur(1.5px) saturate(1.6) brightness(1.08);
 }
-.lg-navbar--enabled.lg-navbar--dragging :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"]:not(.lg-navbar__preview) { color: var(--lg-nav-muted, #48566d); }
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *).lg-navbar__preview { color: var(--lg-nav-accent, #2152a5); transform: scale(1.045); }
 @media (prefers-reduced-motion: reduce) {
-  .lg-navbar--enabled .lg-navbar__lens, .lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *).lg-navbar__preview { scale: 1; transform: none; transition: none; }
+  .lg-navbar--enabled .lg-navbar__lens { scale: 1; transition: none; }
 }
-
-
 
 :where(.lg-navbar) {
   position: relative;
@@ -192,31 +187,19 @@
 .lg-navbar--equal-grow:not(.lg-navbar--sectioned), .lg-navbar--equal-grow > [data-navbar-section] { grid-auto-columns: minmax(max-content, 1fr); }
 .lg-navbar--equal-grow.lg-navbar--vertical:not(.lg-navbar--sectioned), .lg-navbar--equal-grow.lg-navbar--vertical > [data-navbar-section] { grid-auto-rows: minmax(max-content, 1fr); }
 
-/* Gradual highlight: the items stay one colour; the ink (accent copies, clipped to the lens) colours only what the
-   lens covers. */
-.lg-navbar__ink { display: none; }
-.lg-navbar--enabled > .lg-navbar__ink {
-  display: block; position: absolute; inset: 0; z-index: 3; pointer-events: none; will-change: transform;
-  /* Copies left at an old layout must never widen the bar: hosts measure its scroll width. */
-  overflow: hidden;
+/* Recolor the actual glyphs so the lens never paints a second icon or label. */
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) {
+  --_lg-item-icon: var(--lg-nav-icon-color, inherit);
+  --_lg-item-label: var(--lg-nav-label-color, inherit);
+}
+.lg-navbar--enabled:not(.lg-navbar--dragging) :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"],
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *).lg-navbar__preview {
   color: var(--lg-nav-accent, #2152a5);
+  --_lg-item-icon: var(--lg-nav-icon-accent, inherit);
+  --_lg-item-label: var(--lg-nav-label-accent, inherit);
 }
-.lg-navbar__ink-item {
-  position: absolute; display: grid; justify-items: center; align-content: center; gap: 2px; box-sizing: border-box;
-  padding: 5px 10px; white-space: nowrap; line-height: 1.15; font-size: .67rem; font-weight: 600;
-}
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *)[aria-current="page"],
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *).lg-navbar__preview { color: var(--lg-nav-muted, inherit); transform: none; }
-.lg-navbar--no-labels .lg-navbar__ink [data-navbar-label],
-.lg-navbar--equal-truncate .lg-navbar__ink [data-navbar-label] { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-@media (prefers-reduced-motion: reduce) {
-}
-
-/* Separate icon and label colours (setColors). Without them both follow the item's colour. */
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-icon] { color: var(--lg-nav-icon-color, inherit); }
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-label] { color: var(--lg-nav-label-color, inherit); }
-.lg-navbar__ink [data-navbar-icon] { color: var(--lg-nav-icon-accent, inherit); }
-.lg-navbar__ink [data-navbar-label] { color: var(--lg-nav-label-accent, inherit); }
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-icon] { color: var(--_lg-item-icon); }
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-label] { color: var(--_lg-item-label); }
 
 /* Keep glyphs legible over a changing backdrop without recoloring them. */
 .lg-navbar--enabled :is([data-navbar-label], [data-navbar-icon]) {
@@ -234,19 +217,13 @@
     --_lg-contrast-edge: contrast-color(currentColor);
   }
 }
-.lg-navbar--enabled :is(
-  :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *),
-  .lg-navbar__ink-item
-) [data-navbar-label] {
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-label] {
   text-shadow:
     -.55px 0 var(--_lg-contrast-edge), .55px 0 var(--_lg-contrast-edge),
     0 -.55px var(--_lg-contrast-edge), 0 .55px var(--_lg-contrast-edge),
     0 0 2px var(--_lg-contrast-soft);
 }
-.lg-navbar--enabled :is(
-  :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *),
-  .lg-navbar__ink-item
-) [data-navbar-icon] {
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) [data-navbar-icon] {
   filter: drop-shadow(0 0 .6px var(--_lg-contrast-edge))
     drop-shadow(0 0 .85px var(--_lg-contrast-soft));
 }
