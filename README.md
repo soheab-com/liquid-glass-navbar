@@ -14,7 +14,7 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 It isn't on npm. Install it from GitHub:
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.5.0'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.5.1'
 ```
 
 You need a bundler (Vite, esbuild, webpack and so on), because the package ships TypeScript and CSS.
@@ -83,6 +83,8 @@ Give icon-only buttons an `aria-label`, so screen readers have something to read
 On browsers that support SVG backdrop filters, the glass bends the actual text, images, and colors behind it. No extra markup is needed.
 
 Safari uses its live blur and tint. SVG backdrop displacement is currently available in Chromium.
+
+Icons and labels keep their configured colors and use a contrasting edge to stay legible over changing content.
 
 The displacement map is generated in the browser. Sites with a Content Security Policy need `data:` in `img-src` for this effect.
 

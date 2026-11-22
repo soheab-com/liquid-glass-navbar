@@ -212,6 +212,39 @@
 .lg-navbar__ink [data-navbar-icon] { color: var(--lg-nav-icon-accent, inherit); }
 .lg-navbar__ink [data-navbar-label] { color: var(--lg-nav-label-accent, inherit); }
 
+/* Keep glyphs legible over a changing backdrop without recoloring them. */
+.lg-navbar--enabled :is([data-navbar-label], [data-navbar-icon]) {
+  --_lg-contrast-edge: white;
+  --_lg-contrast-soft: rgb(0 0 0 / .55);
+}
+@supports (color: oklch(from red clamp(0, calc((.58 - l) * 100), 1) 0 0)) {
+  .lg-navbar--enabled :is([data-navbar-label], [data-navbar-icon]) {
+    --_lg-contrast-edge: oklch(from currentColor clamp(0, calc((.58 - l) * 100), 1) 0 0);
+    --_lg-contrast-soft: color-mix(in srgb, var(--_lg-contrast-edge) 55%, transparent);
+  }
+}
+@supports (color: contrast-color(red)) {
+  .lg-navbar--enabled :is([data-navbar-label], [data-navbar-icon]) {
+    --_lg-contrast-edge: contrast-color(currentColor);
+  }
+}
+.lg-navbar--enabled :is(
+  :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *),
+  .lg-navbar__ink-item
+) [data-navbar-label] {
+  text-shadow:
+    -.55px 0 var(--_lg-contrast-edge), .55px 0 var(--_lg-contrast-edge),
+    0 -.55px var(--_lg-contrast-edge), 0 .55px var(--_lg-contrast-edge),
+    0 0 2px var(--_lg-contrast-soft);
+}
+.lg-navbar--enabled :is(
+  :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *),
+  .lg-navbar__ink-item
+) [data-navbar-icon] {
+  filter: drop-shadow(0 0 .6px var(--_lg-contrast-edge))
+    drop-shadow(0 0 .85px var(--_lg-contrast-soft));
+}
+
 /* Link tabs: no native drag ghost while swiping (the script also cancels dragstart). */
 .lg-navbar--enabled a:where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *) { -webkit-user-drag: none; }
 

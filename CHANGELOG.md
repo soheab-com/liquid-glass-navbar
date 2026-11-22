@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1
+
+- Added contrast outlines to navbar labels and icons, including the selected tab, for readability over changing backdrops.
+
 ## 0.5.0
 
 - Removed the copied backdrop and its `refractionSource` option. Safari now uses live blur and tint without a cached copy of the content. Chromium continues to bend the live backdrop.
