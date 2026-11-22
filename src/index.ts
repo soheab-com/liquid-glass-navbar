@@ -107,6 +107,19 @@ export interface NavbarMagnifyOptions {
 export interface ContextActionsOptions {
   /** A temporary accessible name for the bar, such as "Actions for 2 files". */
   label?: string;
+  /**
+   * Where the actions go. `replace` (the default) swaps out the whole navigation. `start` and `end` add them
+   * beside it. A section or item of the bar replaces just that part.
+   */
+  placement?: 'replace' | 'start' | 'end' | HTMLElement;
+  /** Add a Back item that returns to the previous items. Pass `{ label, icon }` to change it. */
+  back?: boolean | { label?: string; icon?: Element };
+  /** Called when the Back item is used, after the previous items are back. */
+  onBack?: () => void;
+  /** Class names for the actions' pills, for your own styles. */
+  className?: string;
+  /** A look of their own: colours, a background and transparency for the actions' pills. */
+  look?: { colors?: NavbarColors; background?: string; transparency?: number };
 }
 
 export interface LiquidGlassNavbar {
@@ -223,18 +236,31 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   let maxRows = options.maxRows;
   let overflow = overflowSettings(options.overflow);
   let compact = false;
-  let context: { nodes: HTMLElement[]; current: NavbarItem | undefined; label: string | null } | undefined;
+  interface ContextState {
+    /** What was inserted into the bar (generated pills, your sections, or your items). */
+    inserted: HTMLElement[];
+    /** Your own nodes, and what to restore on them. */
+    restore: { node: HTMLElement; className: string; style: string | null }[];
+    current: NavbarItem | undefined;
+    label: string | null;
+    replace: boolean;
+    hidden: HTMLElement | undefined;
+    back: HTMLButtonElement | undefined;
+    onBack: (() => void) | undefined;
+  }
+  let context: ContextState | undefined;
   const generatedLabels = new Set<NavbarItem>();
   const popovers = new Map<NavbarItem, AnchoredPopover>();
   const badges = new Map<NavbarItem, { badge: HTMLElement; text: HTMLElement; describedBy: string | null }>();
   const enabled = options.enabled ?? (() => true);
   const vertical = (): boolean => placement === 'left' || placement === 'right';
-  const inContext = (element: Element): boolean => !context || Boolean(element.closest(`[${CONTEXT}]`));
+  const inContext = (element: Element): boolean => !context?.replace || Boolean(element.closest(`[${CONTEXT}]`));
   const sections = (): HTMLElement[] => [nav, ...nav.querySelectorAll<HTMLElement>(sectionSelector)]
     .filter((section) => section === nav || inContext(section));
   const items = (): NavbarItem[] => [...sections().flatMap(buttonsIn), ...(more ? buttonsIn(more.host) : [])].filter(inContext);
   const tabs = (): NavbarItem[] => items().filter((button) => isAvailable(button) && !isAction(button));
   let lensSize = 0;
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const spring = createSpring(0, (offset) => {
     lens.style.translate = vertical() ? `0 ${offset}px` : `${offset}px 0`;
   }, { response: .38, dampingRatio: .78 });
@@ -454,8 +480,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   const lineWidth = (line: Unit[], gap: number, pad: number): number =>
     pad + line.reduce((sum, unit) => sum + unit.width, 0) + gap * Math.max(0, line.length - 1);
 
-  const multiRowActive = (): boolean => !vertical() && !context && layout !== 'row';
-  const overflowActive = (): boolean => !vertical() && !context && overflow !== undefined;
+  const multiRowActive = (): boolean => !vertical() && layout !== 'row';
+  const overflowActive = (): boolean => !vertical() && overflow !== undefined;
   const sectioned = (): boolean => sections().length > 1;
 
   let orderedUnits = new Set<HTMLElement>();
@@ -476,6 +502,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
 
   /** Lay out rows and overflow. Runs on every sync, but only writes to the DOM when the result changes. */
   function layoutPass(): void {
+    // Context actions pause rows and More: items stay where they are until the navigation comes back.
+    if (context) return;
     const multi = multiRowActive();
     const split = multi && layout === 'rows' && !sectioned();
     nav.classList.toggle('lg-navbar--multirow', multi);
@@ -681,6 +709,27 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     });
   }
 
+  // Items placed straight in a bar that also has sections (for example beside context actions) get a pill of
+  // their own, like a section.
+  function paintMixed(sectioned: boolean): void {
+    const direct = buttonsIn(nav).filter(isAvailable);
+    const mixed = sectioned && direct.length > 0 && !nav.classList.contains('lg-navbar--multirow');
+    nav.classList.toggle('lg-navbar--mixed', mixed);
+    for (const item of buttonsIn(nav)) item.removeAttribute('data-lg-navbar-run');
+    if (!mixed) {
+      if (!nav.classList.contains('lg-navbar--split')) {
+        for (const surface of surfaces.filter((node) => node.parentElement === nav)) {
+          surface.remove();
+          surfaces.splice(surfaces.indexOf(surface), 1);
+        }
+      }
+      return;
+    }
+    direct[0]?.setAttribute('data-lg-navbar-run', direct.length === 1 ? 'only' : 'start');
+    if (direct.length > 1) direct[direct.length - 1]?.setAttribute('data-lg-navbar-run', 'end');
+    paintSurfaces([direct], nav, 4);
+  }
+
   function overflowOpen(): boolean {
     return Boolean(more?.popover.open);
   }
@@ -697,9 +746,11 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     const isEnabled = enabled();
     nav.classList.toggle('lg-navbar--enabled', isEnabled);
     labelItems();
-    layoutPass();
+    // Mid-compact, labels are still drawn while they shrink, so measuring now would keep items behind More.
+    if (!(compact && nav.classList.contains('lg-navbar--compacting'))) layoutPass();
     const groups = sections().slice(1);
     nav.classList.toggle('lg-navbar--sectioned', groups.length > 0);
+    paintMixed(groups.length > 0);
     const split = nav.classList.contains('lg-navbar--split');
     const glass = groups.length ? groups : split ? surfaces.filter((surface) => surface.parentElement === nav) : [nav];
     if (more && overflowOpen()) {
@@ -799,6 +850,12 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       if (keepOpen) openOverflow();
       else if (overflowOpen()) more.popover.hide({ reason: 'trigger' });
       else openOverflow({ focus: keyboard });
+      return;
+    }
+    if (context?.back && button === context.back) {
+      const { onBack } = context;
+      hideContextActions(keyboard);
+      onBack?.();
       return;
     }
     const popover = popovers.get(button);
@@ -1183,12 +1240,60 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   // ---- Compact ----
 
   let stopScroll: (() => void) | undefined;
+  // Compacting animates: each label's width, height and opacity follow one spring (0 = labels, 1 = icons only),
+  // so the tabs and the lens resize smoothly and a change of direction mid-way turns round from where it is.
+  // At rest the plain `lg-navbar--compact` class takes over and the bar lays out normally again.
+  const compactLabels = new Set<HTMLElement>();
+  const compactSpring = createSpring(0, (value) => {
+    nav.style.setProperty('--_lg-compact', value.toFixed(4));
+    followActive();
+  }, { response: .34, dampingRatio: 1, precision: .002, onRest: (value) => finishCompact(value > .5) });
+
+  function followActive(): void {
+    const active = items().find((button) => button.getAttribute('aria-current') === 'page');
+    const target = active && more?.host.contains(active) && !overflowOpen() ? more.button : active;
+    if (!target || !isAvailable(target)) return;
+    placeLens(target);
+    spring.set(measure(target).start);
+  }
+
+  function finishCompact(value: boolean): void {
+    nav.classList.toggle('lg-navbar--compact', value);
+    nav.classList.remove('lg-navbar--compacting');
+    nav.style.removeProperty('--_lg-compact');
+    for (const label of compactLabels) {
+      label.style.removeProperty('--_lg-label-w');
+      label.style.removeProperty('--_lg-label-h');
+    }
+    compactLabels.clear();
+    sync(true);
+  }
+
   function setCompact(value: boolean): void {
     if (value === compact) return;
     compact = value;
-    nav.classList.toggle('lg-navbar--compact', value);
     options.onCompactChange?.(value);
-    sync();
+    if (reducedMotion.matches || !enabled()) {
+      compactSpring.set(value ? 1 : 0);
+      finishCompact(value);
+      return;
+    }
+    if (!nav.classList.contains('lg-navbar--compacting')) {
+      compactSpring.set(value ? 0 : 1);
+      nav.style.setProperty('--_lg-compact', value ? '0' : '1');
+    }
+    nav.classList.add('lg-navbar--compacting');
+    nav.classList.remove('lg-navbar--compact');
+    // Each label's natural size is where it animates from or to; scroll sizes ignore the clipping.
+    for (const label of nav.querySelectorAll<HTMLElement>('[data-navbar-label]')) {
+      compactLabels.add(label);
+      label.style.setProperty('--_lg-label-w', `${label.scrollWidth + 1}px`);
+      label.style.setProperty('--_lg-label-h', `${label.scrollHeight}px`);
+    }
+    compactSpring.to(value ? 1 : 0);
+    // Expanding: items that won't fit with labels go behind More first, then the labels grow. Compacting does
+    // the reverse: the labels shrink, then items come back from More when it settles (in finishCompact).
+    if (!value) sync(true);
   }
   function setScrollCompact(value?: boolean | ScrollCompactOptions): void {
     stopScroll?.();
@@ -1205,32 +1310,104 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     more?.popover.hide();
     for (const popover of popovers.values()) popover.hide();
     const focusInside = nav.contains(document.activeElement);
-    restoreAll();
+    const placement = contextOptions.placement ?? 'replace';
+    const target = placement instanceof HTMLElement ? placement : undefined;
+    if (target && (!nav.contains(target) || target === nav)) throw new Error('The placement must be a section or item of this navbar.');
+    // An item as the target takes the actions in its own section; anything else gets them in pills.
+    const loose = target !== undefined && !target.hasAttribute('data-navbar-section');
+    const restore = nodes.map((node) => ({ node, className: node.className, style: node.getAttribute('style') }));
+    let back: HTMLButtonElement | undefined;
+    if (contextOptions.back) {
+      const settings = contextOptions.back === true ? {} : contextOptions.back;
+      back = document.createElement('button');
+      back.type = 'button';
+      back.className = 'lg-navbar__back';
+      for (const name of ['data-navbar-action', 'data-navbar-generated', 'data-navbar-overflow']) back.setAttribute(name, name === 'data-navbar-overflow' ? 'never' : '');
+      const icon = settings.icon ? settings.icon.cloneNode(true) as Element : svgIcon('M15 5l-7 7 7 7');
+      icon.setAttribute('data-navbar-icon', '');
+      icon.setAttribute('aria-hidden', 'true');
+      const text = document.createElement('span');
+      text.setAttribute('data-navbar-label', '');
+      text.textContent = settings.label ?? 'Back';
+      back.append(icon, text);
+    }
+    // Wrap runs of loose items into pills of their own; your sections are used as they are.
+    const inserted: HTMLElement[] = [];
+    const queue: HTMLElement[] = back ? [back, ...nodes] : [...nodes];
+    if (loose) inserted.push(...queue);
+    else {
+      let run: HTMLElement | undefined;
+      for (const node of queue) {
+        if (node.hasAttribute('data-navbar-section')) {
+          run = undefined;
+          inserted.push(node);
+          continue;
+        }
+        if (!run) {
+          run = document.createElement('div');
+          run.setAttribute('data-navbar-section', '');
+          run.setAttribute('data-navbar-generated', '');
+          inserted.push(run);
+        }
+        run.append(node);
+      }
+    }
+    const look = contextOptions.look;
+    for (const node of inserted) {
+      node.setAttribute(CONTEXT, '');
+      if (contextOptions.className) node.classList.add(...contextOptions.className.split(/\s+/).filter(Boolean));
+      if (!look) continue;
+      for (const [key, variable] of Object.entries(COLOR_VARIABLES) as [keyof NavbarColors, string][]) {
+        const value = look.colors?.[key];
+        if (value) node.style.setProperty(variable, value);
+      }
+      if (look.background !== undefined && CSS.supports('background', look.background)) node.style.setProperty('--lg-nav-background', look.background);
+      if (look.transparency !== undefined) node.style.setProperty('--lg-nav-tint', String(1 - Math.min(100, Math.max(0, look.transparency)) / 100));
+    }
     context = {
-      nodes: [...nodes],
+      inserted, restore, back, replace: placement === 'replace', hidden: target, onBack: contextOptions.onBack,
       current: items().find((button) => button.getAttribute('aria-current') === 'page'),
       label: nav.getAttribute('aria-label'),
     };
-    for (const node of nodes) {
-      node.setAttribute(CONTEXT, '');
-      nav.append(node);
+    if (placement === 'replace') {
+      nav.append(...inserted);
+      nav.classList.add('lg-navbar--context');
+      // Rows belong to the hidden navigation; the actions lay out as one row.
+      nav.classList.remove('lg-navbar--multirow', 'lg-navbar--wrap', 'lg-navbar--split');
+      nav.style.removeProperty('--_lg-rows-width');
+    } else if (placement === 'start') {
+      const first = [...nav.children].find((child) => child.matches('[data-navbar-section], button, a[href]'));
+      for (const node of inserted) nav.insertBefore(node, first ?? null);
+    } else if (placement === 'end') {
+      nav.append(...inserted);
+    } else if (target) {
+      target.after(...inserted);
+      target.setAttribute('data-navbar-context-hidden', '');
     }
     if (contextOptions.label) nav.setAttribute('aria-label', contextOptions.label);
-    nav.classList.add('lg-navbar--context');
     sync(true);
-    if (focusInside) items().find(isAvailable)?.focus({ preventScroll: true });
+    if (focusInside) (back ?? items().find((item) => inserted.some((node) => node.contains(item)) && isAvailable(item)))?.focus({ preventScroll: true });
   }
 
   function hideContextActions(focus = true): void {
     if (!context) return;
-    const { nodes, current, label } = context;
-    const focusInside = nodes.some((node) => node.contains(document.activeElement));
-    for (const node of nodes) {
-      node.removeAttribute(CONTEXT);
+    const { inserted, restore, current, label, hidden, back } = context;
+    const focusInside = inserted.some((node) => node.contains(document.activeElement));
+    for (const node of inserted) {
       for (const marked of node.querySelectorAll('[aria-current="page"]')) marked.removeAttribute('aria-current');
       if (node.getAttribute('aria-current') === 'page') node.removeAttribute('aria-current');
       node.remove();
     }
+    back?.remove();
+    // Your nodes come back exactly as they were, outside any pill the bar made for them.
+    for (const { node, className, style } of restore) {
+      node.remove();
+      node.removeAttribute(CONTEXT);
+      node.className = className;
+      if (style === null) node.removeAttribute('style');
+      else node.setAttribute('style', style);
+    }
+    hidden?.removeAttribute('data-navbar-context-hidden');
     context = undefined;
     nav.classList.remove('lg-navbar--context');
     if (label === null) nav.removeAttribute('aria-label');
@@ -1246,7 +1423,6 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   const magnifySprings = new Map<NavbarItem, ReturnType<typeof createSpring>>();
   let magnifyPoint: { x: number; y: number } | undefined;
   let magnifyFrame = 0;
-  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
   function magnifySpring(item: NavbarItem): ReturnType<typeof createSpring> {
     let spring = magnifySprings.get(item);
@@ -1330,7 +1506,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   window.addEventListener('pointercancel', () => magnifyAt(undefined), { signal });
   reducedMotion.addEventListener('change', () => { if (reducedMotion.matches) clearMagnify(); }, { signal });
 
-  const observer = new ResizeObserver(() => { if (!gesture?.dragging) sync(true); });
+  // While compacting animates, the spring keeps the lens in place; the full layout runs once it settles.
+  const observer = new ResizeObserver(() => { if (!gesture?.dragging && !nav.classList.contains('lg-navbar--compacting')) sync(true); });
   observer.observe(nav);
   if (nav.parentElement) observer.observe(nav.parentElement);
   // A bar that fell back to natural widths may fit equal ones again after the window grows, without itself resizing.
@@ -1436,6 +1613,12 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       contrastWatch?.abort();
       cancelAnimationFrame(contrastFrame);
       stopScroll?.();
+      compactSpring.stop();
+      for (const label of compactLabels) {
+        label.style.removeProperty('--_lg-label-w');
+        label.style.removeProperty('--_lg-label-h');
+      }
+      nav.style.removeProperty('--_lg-compact');
       clearMagnify();
       nav.style.removeProperty('--_lg-magnify-scale');
       nav.style.removeProperty('--_lg-magnify-lift');

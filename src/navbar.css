@@ -62,7 +62,7 @@
 .lg-navbar__lens { display: none; }
 .lg-navbar--enabled { touch-action: pan-y; user-select: none; }
 .lg-navbar.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *)[aria-current="page"]::before { opacity: 0; }
-.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) { z-index: 2; will-change: transform; }
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) { z-index: 2; }
 .lg-navbar--enabled .lg-navbar__lens:not([hidden]) {
   display: block;
   position: absolute;
@@ -296,7 +296,8 @@
   z-index: var(--lg-popover-z, 20);
   box-sizing: border-box;
   min-width: 150px;
-  max-width: min(280px, calc(100vw - 16px));
+  width: max-content;
+  max-width: min(280px, var(--_lg-popover-room, calc(100vw - 16px)));
   padding: 4px;
   border: 1px solid var(--lg-nav-rim, rgb(255 255 255 / .7));
   border-radius: var(--lg-popover-radius, 16px);
@@ -367,6 +368,9 @@
 /* The expanding row: icons in a shared pill or each in its own glass circle. */
 .lg-navbar__popover--expand {
   min-width: 0;
+  /* Size to the icons, not to the narrower bar it's positioned in; wrap only past the room available. */
+  width: max-content;
+  max-width: var(--_lg-popover-room, calc(100vw - 16px));
   padding: 0;
   border: 0;
   border-radius: 999px;
@@ -381,8 +385,10 @@
   border-left-color: transparent;
   margin-top: -5px;
 }
-.lg-navbar__overflow--expand { position: static; display: flex; justify-content: center; gap: 1px; }
-.lg-navbar__overflow--shared { position: relative; padding: 4px; border-radius: 999px; }
+.lg-navbar__overflow--expand { position: static; display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; }
+/* One row reads as a pill; when the icons wrap, the corners stay round around every row. */
+.lg-navbar__overflow--shared { position: relative; padding: 4px; border-radius: 30px; }
+.lg-navbar__overflow--shared::before, .lg-navbar__overflow--shared::after { border-radius: inherit !important; }
 .lg-navbar__overflow--individual { gap: 8px; }
 .lg-navbar__overflow--expand > :is(button, a):has([data-navbar-icon]) [data-navbar-label] { display: none; }
 .lg-navbar__overflow--expand > :is(button, a) { min-width: 49px; }
@@ -421,11 +427,16 @@
 /* Compact: icons only. Compact-capable bars skip effects that leave a stale copy of the glyph in Safari while
    the tabs resize. */
 .lg-navbar--compact :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *):has([data-navbar-icon]):not([data-navbar-hide-icon]) [data-navbar-label] { display: none; }
-.lg-navbar--compactable.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) { will-change: auto; }
 .lg-navbar--compactable.lg-navbar--enabled :is(button, a) [data-navbar-icon] { filter: none; }
 
 /* Context actions replace the navigation until the app leaves context mode. */
 .lg-navbar--context > :not([data-navbar-context], .lg-navbar__lens, .lg-navbar__refraction-assets) { display: none !important; }
+.lg-navbar [data-navbar-context-hidden] { display: none !important; }
+/* Items straight in a bar that also has sections get a glass pill of their own (painted by the script). */
+.lg-navbar--mixed > :is(button, a) { margin-block: 4px; }
+.lg-navbar--mixed > :is(button, a):not([data-lg-navbar-run="start"], [data-lg-navbar-run="only"]) { margin-inline-start: -7px; }
+.lg-navbar--mixed > :is(button, a):is([data-lg-navbar-run="start"], [data-lg-navbar-run="only"]) { margin-inline-start: 4px; }
+.lg-navbar--mixed > :is(button, a):is([data-lg-navbar-run="end"], [data-lg-navbar-run="only"]) { margin-inline-end: 4px; }
 
 /* Adaptive contrast: a readable foreground over dark content, also with clear glass. */
 .lg-navbar--enabled[data-lg-navbar-backdrop="dark"] :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) {
@@ -465,4 +476,16 @@
   translate: calc(var(--_lg-magnify, 0) * var(--_lg-magnify-lift, 10px) * var(--_lg-magnify-x))
     calc(var(--_lg-magnify, 0) * var(--_lg-magnify-lift, 10px) * var(--_lg-magnify-y));
   scale: calc(1 + var(--_lg-magnify, 0) * (var(--_lg-magnify-scale, 1.4) - 1));
+}
+
+/* Compacting in motion: labels shrink to nothing (or grow back) by the script's spring value. */
+.lg-navbar--compacting :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *):has([data-navbar-icon]):not([data-navbar-hide-icon]) {
+  gap: calc(2px * (1 - var(--_lg-compact, 0)));
+}
+.lg-navbar--compacting :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *):has([data-navbar-icon]):not([data-navbar-hide-icon]) [data-navbar-label] {
+  display: block;
+  overflow: hidden;
+  max-width: calc(var(--_lg-label-w, 6em) * (1 - var(--_lg-compact, 0)));
+  max-height: calc(var(--_lg-label-h, 1.2em) * (1 - var(--_lg-compact, 0)));
+  opacity: calc(1 - var(--_lg-compact, 0) * 1.5);
 }

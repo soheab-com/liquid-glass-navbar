@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-22
+
+### Added
+
+- `showContextActions()` options: `placement` puts the actions before or after the navigation, or in place of one section or item, instead of replacing it all. `back` adds a Back item that returns to the previous items, with `onBack`. `className` and `look` (colors, background, transparency) give the actions' pills their own style.
+- Items placed straight in a bar that also has sections get a glass pill of their own.
+
+### Changed
+
+- The README is shorter and points to the new [docs](https://soheab.com/navbar-builder/docs/) for the full reference.
+- Scroll compact animates: labels fold away and grow back on a spring, and the tabs and lens resize smoothly. Changing direction mid-way turns it around. Reduce Motion switches at once.
+
+### Fixed
+
+- Tabs no longer ask the browser for a compositing layer each (`will-change`), which a page with many bars could run out of on iOS.
+- The expanding More row no longer runs past the edges of its boundary; icons wrap onto another row inside it.
+
 ## [0.7.0] - 2026-11-22
 
 ### Added
@@ -143,7 +160,8 @@ All new behavior is opt-in; the single-row bar is unchanged by default.
 - Colors come from CSS variables (`--lg-nav-accent`, `--lg-nav-muted`, `--lg-nav-surface` and friends), with light and dark looks in the examples.
 - Respects Reduce Motion and Reduce Transparency.
 
-[Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.5.5...v0.6.0
 [0.5.5]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.5.4...v0.5.5

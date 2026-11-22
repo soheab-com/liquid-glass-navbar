@@ -127,6 +127,8 @@ export function createAnchoredPopover(
     const roomBelow = bounds.bottom - anchorBox.bottom - margin;
     // Tall content scrolls inside the popover rather than running past the boundary.
     body.style.maxHeight = `${Math.max(120, Math.max(roomAbove, roomBelow) - gap - 10)}px`;
+    // Never wider than the boundary: content that doesn't fit wraps instead of running past the edges.
+    element.style.setProperty('--_lg-popover-room', `${Math.max(120, bounds.width - 2 * margin)}px`);
     const width = element.offsetWidth;
     const height = element.offsetHeight;
     let side: 'above' | 'below' = options.placement === 'below' ? 'below'
