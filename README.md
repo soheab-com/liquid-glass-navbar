@@ -14,7 +14,7 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 It isn't on npm. Install it from GitHub:
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.5.2'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.5.3'
 ```
 
 You need a bundler (Vite, esbuild, webpack and so on), because the package ships TypeScript and CSS.
@@ -54,7 +54,9 @@ const navbar = mountLiquidGlassNavbar(document.querySelector('#tabs')!, {
 });
 ```
 
-That's it. Tapping or swiping to a tab moves `aria-current` to it and calls `onSelect`. Showing the right page is up to you.
+The navbar uses the platform UI font by default. Set `--lg-nav-font` on the navbar to use a different font stack.
+
+Tapping or swiping to a tab moves `aria-current` to it and calls `onSelect`. Showing the right page is up to you.
 
 If every tab is its own page, use links instead of buttons: `<a href="/schedule">`. Tapping a link, or ending a swipe on it, follows it like any other link.
 

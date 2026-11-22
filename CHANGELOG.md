@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.3
+
+- Use the platform UI font consistently for buttons, links, and the selected tab. Customize it with `--lg-nav-font`.
+
 ## 0.5.2
 
 - Center edge-pinned navbars across the full group of pills, including when equal-width tabs grow the bar.

@@ -49,6 +49,7 @@
   flex-shrink: 0;
   white-space: nowrap;
   line-height: 1.15;
+  font-family: inherit;
   font-size: .67rem;
   font-weight: 600;
   text-decoration: none;
@@ -98,7 +99,10 @@
 
 
 
-:where(.lg-navbar) { position: relative; }
+:where(.lg-navbar) {
+  position: relative;
+  font-family: var(--lg-nav-font, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif);
+}
 .lg-navbar--sectioned {
   display: flex;
   gap: 8px;
