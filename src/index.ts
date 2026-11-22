@@ -91,6 +91,17 @@ export interface LiquidGlassNavbarOptions {
   onCompactChange?: (compact: boolean) => void;
   /** Adapt the foreground and tint to what's behind the bar. `true` watches `[data-navbar-backdrop]` regions. */
   contrast?: boolean | ContrastOptions;
+  /** Dock-style magnification: icons near the pointer or finger grow and rise, then settle as it moves on. */
+  magnify?: boolean | NavbarMagnifyOptions;
+}
+
+export interface NavbarMagnifyOptions {
+  /** How large the icon under the pointer grows. Default 1.4. */
+  scale?: number;
+  /** How far it rises away from the bar's edge, in px. Default 10. */
+  lift?: number;
+  /** How far from the pointer neighbours still react, in px. Default 110. */
+  range?: number;
 }
 
 export interface ContextActionsOptions {
@@ -130,6 +141,7 @@ export interface LiquidGlassNavbar {
   /** Leave context mode, restoring the navigation and the tab that was selected before. */
   hideContextActions(): void;
   readonly contextActive: boolean;
+  setMagnify(options?: boolean | NavbarMagnifyOptions): void;
   /** An anchored popover for one of the bar's items. Activating the item, by tap or swipe, toggles it. */
   createPopover(trigger: NavbarItem, content: Node | readonly Node[], options?: AnchoredPopoverOptions): AnchoredPopover;
   destroy(): void;
@@ -229,37 +241,33 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   let releaseVelocity: { value: number; at: number } | undefined;
   let samples: { position: number; time: number }[] = [];
 
+  // Positions inside the nav's padding box, to the subpixel: offsetLeft and offsetWidth round to whole pixels,
+  // which leaves the lens and row surfaces up to a pixel off centre.
   function offsetOf(button: HTMLElement): { left: number; top: number } {
-    let left = 0;
-    let top = 0;
-    let node: HTMLElement | null = button;
-    while (node && node !== nav) {
-      left += node.offsetLeft;
-      top += node.offsetTop;
-      node = node.offsetParent instanceof HTMLElement ? node.offsetParent : null;
-    }
-    return { left, top };
+    const outer = nav.getBoundingClientRect();
+    const inner = button.getBoundingClientRect();
+    return { left: inner.left - outer.left - nav.clientLeft, top: inner.top - outer.top - nav.clientTop };
   }
 
   function boxOf(button: HTMLElement): Box {
-    const { left, top } = offsetOf(button);
-    return { left, top, width: button.offsetWidth, height: button.offsetHeight };
+    const outer = nav.getBoundingClientRect();
+    const inner = button.getBoundingClientRect();
+    return { left: inner.left - outer.left - nav.clientLeft, top: inner.top - outer.top - nav.clientTop, width: inner.width, height: inner.height };
   }
 
-  function measure(button: NavbarItem): { start: number; size: number } {
-    const { left, top } = offsetOf(button);
-    const isVertical = vertical();
-    return isVertical ? { start: top, size: button.offsetHeight } : { start: left, size: button.offsetWidth };
+  function measure(button: HTMLElement): { start: number; size: number } {
+    const box = boxOf(button);
+    return vertical() ? { start: box.top, size: box.height } : { start: box.left, size: box.width };
   }
 
   function placeLens(button: HTMLElement, size?: number): void {
-    const { left, top } = offsetOf(button);
-    const width = vertical() ? button.offsetWidth : size ?? button.offsetWidth;
-    const height = vertical() ? size ?? button.offsetHeight : button.offsetHeight;
+    const box = boxOf(button);
+    const width = vertical() ? box.width : size ?? box.width;
+    const height = vertical() ? size ?? box.height : box.height;
     lens.style.width = `${width}px`;
     lens.style.height = `${height}px`;
-    lens.style.left = vertical() ? `${left}px` : '0';
-    lens.style.top = vertical() ? '0' : `${top}px`;
+    lens.style.left = vertical() ? `${box.left}px` : '0';
+    lens.style.top = vertical() ? '0' : `${box.top}px`;
     lensSize = vertical() ? height : width;
     lens.hidden = false;
   }
@@ -659,7 +667,12 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     groups.forEach((group, index) => {
       const surface = pool[index];
       if (!surface) return;
-      const boxes = group.map((element) => (host === nav ? boxOf(element) : { left: element.offsetLeft, top: element.offsetTop, width: element.offsetWidth, height: element.offsetHeight }));
+      const origin = host === nav ? undefined : (surface.offsetParent ?? host).getBoundingClientRect();
+      const boxes = group.map((element) => {
+        if (!origin) return boxOf(element);
+        const rect = element.getBoundingClientRect();
+        return { left: rect.left - origin.left, top: rect.top - origin.top, width: rect.width, height: rect.height };
+      });
       const left = Math.min(...boxes.map((box) => box.left)) - pad;
       const top = Math.min(...boxes.map((box) => box.top)) - pad;
       const right = Math.max(...boxes.map((box) => box.left + box.width)) + pad;
@@ -953,7 +966,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       if (more?.host.contains(button) !== more?.host.contains(target)) return false;
       return Math.abs(boxOf(button).top - box.top) < 4;
     });
-    const spans = row.map((button) => ({ start: boxOf(button).left, size: button.offsetWidth })).sort((a, b) => a.start - b.start);
+    const spans = row.map((button) => ({ start: boxOf(button).left, size: boxOf(button).width })).sort((a, b) => a.start - b.start);
     const size = blendedSize(spans, point.x);
     const min = spans[0].start, max = spans[spans.length - 1].start + spans[spans.length - 1].size - size;
     placeLens(target, size);
@@ -1227,6 +1240,96 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     if (focus && focusInside) (current && isAvailable(current) ? current : more?.button ?? items().find(isAvailable))?.focus({ preventScroll: true });
   }
 
+  // ---- Magnify: each icon's amount (0..1) is its own spring, so passing over it rises and settles smoothly ----
+
+  let magnify: Required<NavbarMagnifyOptions> | undefined;
+  const magnifySprings = new Map<NavbarItem, ReturnType<typeof createSpring>>();
+  let magnifyPoint: { x: number; y: number } | undefined;
+  let magnifyFrame = 0;
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+  function magnifySpring(item: NavbarItem): ReturnType<typeof createSpring> {
+    let spring = magnifySprings.get(item);
+    if (!spring) {
+      spring = createSpring(0, (value) => {
+        if (value < .001) item.style.removeProperty('--_lg-magnify');
+        else item.style.setProperty('--_lg-magnify', value.toFixed(4));
+      }, { response: .28, dampingRatio: 1, precision: .001 });
+      magnifySprings.set(item, spring);
+    }
+    return spring;
+  }
+
+  function applyMagnify(): void {
+    magnifyFrame = 0;
+    if (!magnify) return;
+    const point = magnifyPoint;
+    const range = magnify.range;
+    for (const item of items()) {
+      let amount = 0;
+      const inMenu = Boolean(more?.host.contains(item) && more.host.classList.contains('lg-navbar__overflow--menu'));
+      if (point && isAvailable(item) && !inMenu) {
+        const box = boxOf(item);
+        const dx = point.x - (box.left + box.width / 2);
+        const dy = point.y - (box.top + box.height / 2);
+        // Along the bar the falloff is smooth; across it, only rows the pointer is near react.
+        const along = vertical() ? Math.abs(dy) : Math.abs(dx);
+        const across = Math.max(0, (vertical() ? Math.abs(dx) - box.width / 2 : Math.abs(dy) - box.height / 2));
+        const distance = Math.hypot(along, across * 1.5);
+        amount = distance < range ? (1 + Math.cos(Math.PI * distance / range)) / 2 : 0;
+      }
+      const spring = magnifySprings.get(item);
+      if (amount > 0 || (spring && spring.target !== 0)) magnifySpring(item).to(amount);
+    }
+  }
+
+  function magnifyAt(point: { x: number; y: number } | undefined): void {
+    if (!magnify || reducedMotion.matches) return;
+    magnifyPoint = point;
+    if (!point) { applyMagnify(); return; }
+    if (!magnifyFrame) magnifyFrame = requestAnimationFrame(applyMagnify);
+  }
+
+  function clearMagnify(): void {
+    cancelAnimationFrame(magnifyFrame);
+    magnifyFrame = 0;
+    for (const [item, spring] of magnifySprings) {
+      spring.stop();
+      item.style.removeProperty('--_lg-magnify');
+    }
+    magnifySprings.clear();
+  }
+
+  function setMagnify(value?: boolean | NavbarMagnifyOptions): void {
+    const settings = value === true ? {} : value || undefined;
+    magnify = settings ? { scale: settings.scale ?? 1.4, lift: settings.lift ?? 10, range: settings.range ?? 110 } : undefined;
+    nav.classList.toggle('lg-navbar--magnify', Boolean(magnify));
+    if (magnify) {
+      nav.style.setProperty('--_lg-magnify-scale', String(magnify.scale));
+      nav.style.setProperty('--_lg-magnify-lift', `${magnify.lift}px`);
+    } else {
+      nav.style.removeProperty('--_lg-magnify-scale');
+      nav.style.removeProperty('--_lg-magnify-lift');
+      clearMagnify();
+    }
+  }
+
+  nav.addEventListener('pointermove', (event) => {
+    if (event.pointerType === 'mouse' && !gesture) magnifyAt(pointOf(event));
+  }, { signal, passive: true });
+  nav.addEventListener('pointerleave', (event) => {
+    if (event.pointerType === 'mouse' && !gesture) magnifyAt(undefined);
+  }, { signal });
+  // A finger magnifies while it's down and sliding; the window sees those moves once the nav captures them.
+  window.addEventListener('pointermove', (event) => {
+    if (gesture && gesture.id === event.pointerId) magnifyAt(pointOf(event));
+  }, { signal, passive: true });
+  window.addEventListener('pointerup', (event) => {
+    if (event.pointerType !== 'mouse') magnifyAt(undefined);
+  }, { signal });
+  window.addEventListener('pointercancel', () => magnifyAt(undefined), { signal });
+  reducedMotion.addEventListener('change', () => { if (reducedMotion.matches) clearMagnify(); }, { signal });
+
   const observer = new ResizeObserver(() => { if (!gesture?.dragging) sync(true); });
   observer.observe(nav);
   if (nav.parentElement) observer.observe(nav.parentElement);
@@ -1244,6 +1347,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   setColors(options.colors);
   setContrast(options.contrast);
   setScrollCompact(options.scrollCompact);
+  setMagnify(options.magnify);
   setPosition(placement);
 
   return {
@@ -1296,6 +1400,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     showContextActions,
     hideContextActions: () => hideContextActions(),
     get contextActive() { return context !== undefined; },
+    setMagnify,
     createPopover(trigger, content, popoverOptions = {}) {
       if (!items().includes(trigger)) throw new Error('The button does not belong to this navbar.');
       popovers.get(trigger)?.destroy();
@@ -1331,6 +1436,9 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       contrastWatch?.abort();
       cancelAnimationFrame(contrastFrame);
       stopScroll?.();
+      clearMagnify();
+      nav.style.removeProperty('--_lg-magnify-scale');
+      nav.style.removeProperty('--_lg-magnify-lift');
       removeMore();
       clearRows();
       refraction?.destroy();

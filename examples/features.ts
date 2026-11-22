@@ -29,7 +29,7 @@ function mount(id: string, labels: string[], options: LiquidGlassNavbarOptions, 
   return bar;
 }
 
-mount('wrap', names, { layout: 'wrap', transparency: 60 });
+mount('wrap', names, { layout: 'wrap', transparency: 60, magnify: true });
 mount('rows', names, { layout: 'rows', transparency: 60 });
 mount('manual', [], { layout: 'rows' }, (nav) => {
   const groups = [['Create', 'Upload'], ['Alerts', 'Chat'], ['Home', 'Files', 'People', 'Calendar']];
@@ -42,7 +42,7 @@ mount('manual', [], { layout: 'rows' }, (nav) => {
   });
 });
 mount('limit', [...names, 'Reports', 'Archive', 'Photos', 'Music'], { layout: 'wrap', maxRows: 2, overflow: 'menu' });
-mount('overflow', [...names, 'Reports', 'Archive'], { overflow: true });
+mount('overflow', [...names, 'Reports', 'Archive'], { overflow: true, magnify: true });
 mount('expand', names.slice(0, 6), { overflow: { style: 'expand', maxVisible: 3 } });
 const create = mount('create', [], { transparency: 60 }, (nav) => {
   nav.append(button('Notes'), button('Chats'), button('Updates'), button('Create', { 'data-navbar-action': '' }));

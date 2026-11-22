@@ -453,3 +453,16 @@
   .lg-navbar--enabled > [data-navbar-section]::after,
   .lg-navbar--enabled .lg-navbar__surface::after { transition: opacity .15s ease, background-color .15s ease; }
 }
+
+/* Magnify: the icon grows and rises away from the bar's edge. The script springs --_lg-magnify per item, so
+   nothing here is a timed transition; layout, the lens and the hit areas stay put. */
+.lg-navbar--magnify { --_lg-magnify-x: 0; --_lg-magnify-y: -1; --_lg-magnify-origin: 50% 100%; }
+.lg-navbar--magnify[data-lg-navbar-position="top"] { --_lg-magnify-y: 1; --_lg-magnify-origin: 50% 0; }
+.lg-navbar--magnify[data-lg-navbar-position="left"] { --_lg-magnify-y: 0; --_lg-magnify-x: 1; --_lg-magnify-origin: 0 50%; }
+.lg-navbar--magnify[data-lg-navbar-position="right"] { --_lg-magnify-y: 0; --_lg-magnify-x: -1; --_lg-magnify-origin: 100% 50%; }
+.lg-navbar--magnify :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) [data-navbar-icon] {
+  transform-origin: var(--_lg-magnify-origin);
+  translate: calc(var(--_lg-magnify, 0) * var(--_lg-magnify-lift, 10px) * var(--_lg-magnify-x))
+    calc(var(--_lg-magnify, 0) * var(--_lg-magnify-lift, 10px) * var(--_lg-magnify-y));
+  scale: calc(1 + var(--_lg-magnify, 0) * (var(--_lg-magnify-scale, 1.4) - 1));
+}

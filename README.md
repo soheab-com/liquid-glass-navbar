@@ -14,7 +14,7 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 It isn't on npm. Install it from GitHub:
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.6.0'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.7.0'
 ```
 
 You need a bundler (Vite, esbuild, webpack and so on), because the package ships TypeScript and CSS.
@@ -117,6 +117,7 @@ Pass these to `mountLiquidGlassNavbar`. All of them are optional.
 | `scrollCompact` | `true` or `{ source, threshold }`. Scrolling down compacts the bar and scrolling up restores the labels. |
 | `onCompactChange(compact)` | Called when the bar compacts or expands. |
 | `contrast` | `true` or `{ regions, adaptiveTint }`. See [Adaptive contrast](#adaptive-contrast). |
+| `magnify` | `true` or `{ scale, lift, range }`. Icons near the pointer grow and rise, like the macOS Dock. See [Magnify](#magnify). |
 
 ## Changing things later
 
@@ -142,6 +143,7 @@ Pass these to `mountLiquidGlassNavbar`. All of them are optional.
 | `setCompact(on)`, `setScrollCompact(options?)` | Compacts the bar yourself, or changes the scroll watcher. |
 | `setContrast(options?)`, `setBackdrop(signal?)` | Changes contrast settings, or tells the bar what's behind it: `{ tone: 'dark', busy: true }`. |
 | `showContextActions(nodes, { label })`, `hideContextActions()` | Swaps the navigation for your own actions, then brings it back with the same tab selected. |
+| `setMagnify(options?)` | Turns the magnify effect on, changes it, or turns it off. |
 | `createPopover(item, content, options)` | Anchors a popover to one of the bar's items. See [Popovers](#popovers). |
 | `sync()` | Tells the navbar something changed: the current tab, a hidden tab, or the theme. |
 | `destroy()` | Removes everything the navbar added. Call it before you remove the `<nav>`. |
@@ -252,6 +254,15 @@ navbar.setBackdrop({ tone: 'dark' }); // or tell it yourself
 ```
 
 Over dark content the icons and labels switch to `--lg-nav-on-dark-color` and `--lg-nav-on-dark-accent`, also with clear glass. With `adaptiveTint`, busy content adds tint (`{ busy: 34 }` by default) and quiet content clears it again; without it, clear glass keeps zero tint. The bar still uses the live backdrop.
+
+## Magnify
+
+```ts
+mountLiquidGlassNavbar(nav, { magnify: true });
+mountLiquidGlassNavbar(nav, { magnify: { scale: 1.5, lift: 12, range: 130 } });
+```
+
+Move the mouse along the bar, or press and slide a finger across it: the icon under it grows (`scale`, default 1.4) and rises away from the bar's edge (`lift`, default 10px), and its neighbours follow partway within `range` (default 110px). As the pointer moves on, each icon springs back down. Only the icons move; the tabs, the lens and the hit areas stay where they are. It's off for people who turn on Reduce Motion.
 
 ## Persistence
 
