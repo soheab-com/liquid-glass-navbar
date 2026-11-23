@@ -15,7 +15,7 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 It isn't on npm. Install it from GitHub:
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.8.0'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.9.0'
 ```
 
 You need a bundler (Vite, esbuild, webpack and so on), because the package ships TypeScript and CSS.
@@ -73,6 +73,7 @@ Everything is explained, with live examples, in the [docs](https://soheab.com/na
 [quick start](https://soheab.com/navbar-builder/docs/#quick-start),
 [options](https://soheab.com/navbar-builder/docs/#options),
 [methods](https://soheab.com/navbar-builder/docs/#methods),
+[TypeScript types](https://soheab.com/navbar-builder/docs/#types),
 [HTML attributes](https://soheab.com/navbar-builder/docs/#attributes) and
 [CSS variables](https://soheab.com/navbar-builder/docs/#css).
 

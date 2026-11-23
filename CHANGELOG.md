@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-23
+
+### Added
+
+- `closeOnScroll` for popovers and `overflow`: whether scrolling the page closes them. Off by default.
+- `animations` option and `setAnimations()`: opt-in motion, all springs that can be interrupted and none of it with Reduce Motion. `reflow` glides items to their new place when they move between the bar and More, change rows or the bar resizes; `popovers` gives the spring More and anchored popovers open on a little overshoot; `tap` squishes a pressed tab and bounces a newly selected icon; `badges` pops badges in and out and pulses them when they change. Pass `true` for all of them.
+- `createSpring()`, `rubberBand()` and `rubberBanded()` are exported, so apps can move in step with the navbar.
+- `spring` option for `createAnchoredPopover()`: a little overshoot on its open and close.
+- `overflow.trigger: 'dots'` shows the More button as a vertical ⋮ icon without a label; it keeps "More" (or your `label`) as its accessible name.
+- Gradual highlight: while the lens moves, only the part of a tab it covers takes the selected colour, so halfway between two tabs you see half of each. Each label and icon gets a copy in the selected colour, clipped to the lens, so it repaints reliably on iOS and isn't recoloured by dark-mode extensions. Items that appear mid-swipe, like an expanded More row, are painted too. It clears when the lens settles.
+
+### Changed
+
+- Popovers and More stay open when a press outside them turns into a page scroll; a tap outside still closes them. Set `closeOnScroll: true` for the old behaviour, closing as the page scrolls.
+- Popovers open and close on a spring instead of a fixed fade, so one closed while still opening turns around from where it is.
+- Compacting no longer moves items in or out of More: it only hides the labels, and the bar keeps the same items as with labels.
+
+### Fixed
+
+- The lens is drawn over the glass of an expanded More row instead of behind it.
+- With More open mid-swipe, a finger off to the side of its items points at the bar again, so the lens comes back down without returning to the bar's height.
+- Mid-swipe, magnify follows the finger along the row the lens is in, however far off the bar the finger is held.
+- A swipe keeps its highlight and its place when the page scrolls under it, as Safari does when the finger moves away from the bar. Scroll compact waits until the finger lifts.
+- More opens when a swipe slides level with it, even with the finger above or below the bar, and closes again as soon as the finger is level with another tab (unless it's heading into the open row), and when the swipe ends outside it.
+- Glass circles behind the icons of an expanded More row line up with their icons; they were measured while the row was still scaling in.
+
 ## [0.8.0] - 2026-11-22
 
 ### Added
@@ -160,7 +186,8 @@ All new behavior is opt-in; the single-row bar is unchanged by default.
 - Colors come from CSS variables (`--lg-nav-accent`, `--lg-nav-muted`, `--lg-nav-surface` and friends), with light and dark looks in the examples.
 - Respects Reduce Motion and Reduce Transparency.
 
-[Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.5.5...v0.6.0

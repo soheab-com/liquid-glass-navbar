@@ -1,5 +1,7 @@
+import { createSpring, type Spring } from './spring.js';
+
 export type PopoverPlacement = 'auto' | 'above' | 'below';
-export type PopoverCloseReason = 'escape' | 'outside' | 'selection' | 'trigger' | 'api';
+export type PopoverCloseReason = 'escape' | 'outside' | 'scroll' | 'selection' | 'trigger' | 'api';
 
 export interface AnchoredPopoverOptions {
   /** Accessible name for the popover. Defaults to the trigger's name. */
@@ -20,10 +22,17 @@ export interface AnchoredPopoverOptions {
   className?: string;
   /** Close after a button or link inside the popover is activated. Default true. */
   closeOnSelect?: boolean;
+  /**
+   * Close when the page scrolls, including a press outside that turns into a scroll. Default false: only a tap
+   * outside closes it, and a finger that starts scrolling the page leaves it open.
+   */
+  closeOnScroll?: boolean;
   /** Toggle the popover when the trigger is clicked. Default true. The navbar turns this off for its own triggers. */
   bindTrigger?: boolean;
   onOpen?: () => void;
   onClose?: (reason: PopoverCloseReason) => void;
+  /** Add a little overshoot to the spring the popover opens and closes on. Pass a function to decide each time. */
+  spring?: boolean | (() => boolean);
 }
 
 export interface AnchoredPopover {
@@ -158,24 +167,56 @@ export function createAnchoredPopover(
     if (!frame) frame = requestAnimationFrame(() => { frame = 0; position(); });
   }
 
+  // One spring from 0 (closed) to 1 (open) drives the fade, the rise and the scale, so a popover closed while
+  // still opening turns round from where it is. It's calm by default; `spring` adds a little overshoot.
+  let openness: Spring | undefined;
+  let bouncy: boolean | undefined;
+  const springy = (): boolean => (typeof options.spring === 'function' ? options.spring() : Boolean(options.spring));
+  function animateSpring(show: boolean): void {
+    const bounce = springy();
+    if (!openness || bouncy !== bounce) {
+      const from = openness?.value ?? 0;
+      openness?.stop();
+      bouncy = bounce;
+      openness = createSpring(from, (value) => {
+        // Closing ends as soon as it's out of sight, rather than waiting for the spring to settle completely.
+        if (!open && value < .04) return finishClosing();
+        const shift = element.dataset.side === 'below' ? -6 : 6;
+        element.style.opacity = String(Math.max(0, Math.min(1, value)));
+        element.style.transform = `translateY(${(shift * (1 - value)).toFixed(2)}px) scale(${(.9 + .1 * value).toFixed(4)})`;
+      }, {
+        response: bounce ? .34 : .26, dampingRatio: bounce ? .72 : 1, precision: .002,
+        onRest: (value) => {
+          if (value < .5) return finishClosing();
+          element.style.removeProperty('opacity');
+          element.style.removeProperty('transform');
+        },
+      });
+    }
+    element.hidden = false;
+    // A closing popover no longer takes clicks or taps.
+    element.style.pointerEvents = show ? '' : 'none';
+    if (show) element.removeAttribute('inert');
+    else element.setAttribute('inert', '');
+    openness.to(show ? 1 : 0);
+  }
+
+  function finishClosing(): void {
+    openness?.stop();
+    for (const property of ['opacity', 'transform', 'pointer-events']) element.style.removeProperty(property);
+    element.removeAttribute('inert');
+    element.hidden = true;
+  }
+
   function animate(show: boolean): void {
     motion?.cancel();
     motion = undefined;
     if (reducedMotion() || typeof element.animate !== 'function') {
+      openness?.set(show ? 1 : 0);
       element.hidden = !show;
       return;
     }
-    element.hidden = false;
-    const shift = element.dataset.side === 'below' ? -4 : 4;
-    const closed = { opacity: 0, transform: `translateY(${shift}px) scale(.96)` };
-    const shown = { opacity: 1, transform: 'none' };
-    motion = element.animate(show ? [closed, shown] : [shown, closed], {
-      duration: show ? 160 : 110, easing: show ? 'cubic-bezier(.2, .8, .3, 1)' : 'ease-in',
-    });
-    motion.onfinish = () => {
-      motion = undefined;
-      element.hidden = !open;
-    };
+    animateSpring(show);
   }
 
   function show({ focus = false }: { focus?: boolean } = {}): void {
@@ -209,11 +250,29 @@ export function createAnchoredPopover(
   if (options.bindTrigger !== false) {
     trigger.addEventListener('click', (event) => toggle({ focus: event.detail === 0 }), { signal });
   }
+  // An outside press closes the popover. Unless it closes on scroll, a press only counts once it ends as a tap:
+  // a finger that moves, or that the browser takes over to scroll the page, leaves it open.
+  let outsidePress: { id: number; x: number; y: number } | undefined;
   document.addEventListener('pointerdown', (event) => {
     if (!open || !(event.target instanceof Node)) return;
     if (element.contains(event.target) || trigger.contains(event.target)) return;
-    hide({ reason: 'outside' });
+    if (options.closeOnScroll || event.pointerType === 'mouse') hide({ reason: 'outside' });
+    else outsidePress = { id: event.pointerId, x: event.clientX, y: event.clientY };
   }, { capture: true, signal });
+  document.addEventListener('pointermove', (event) => {
+    if (outsidePress?.id === event.pointerId && Math.hypot(event.clientX - outsidePress.x, event.clientY - outsidePress.y) > 10) outsidePress = undefined;
+  }, { capture: true, passive: true, signal });
+  document.addEventListener('pointercancel', () => { outsidePress = undefined; }, { capture: true, signal });
+  document.addEventListener('pointerup', (event) => {
+    if (outsidePress?.id !== event.pointerId) return;
+    outsidePress = undefined;
+    if (open) hide({ reason: 'outside' });
+  }, { capture: true, signal });
+  addEventListener('scroll', (event) => {
+    if (outsidePress) outsidePress = undefined;
+    // Scrolling inside the popover itself never closes it.
+    if (options.closeOnScroll && open && !(event.target instanceof Node && element.contains(event.target))) hide({ reason: 'scroll' });
+  }, { passive: true, capture: true, signal });
   document.addEventListener('keydown', (event) => {
     if (!open || event.key !== 'Escape') return;
     const inside = element.contains(document.activeElement) || trigger === document.activeElement;
@@ -250,6 +309,7 @@ export function createAnchoredPopover(
       observer.disconnect();
       cancelAnimationFrame(frame);
       motion?.cancel();
+      openness?.stop();
       element.remove();
       for (const [name, value] of [['aria-controls', original.controls], ['aria-expanded', original.expanded], ['aria-haspopup', original.popup]] as const) {
         if (value === null) trigger.removeAttribute(name);

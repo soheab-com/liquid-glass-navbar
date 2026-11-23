@@ -367,6 +367,8 @@
 
 /* The expanding row: icons in a shared pill or each in its own glass circle. */
 .lg-navbar__popover--expand {
+  /* No stacking layer of its own: the lens has to travel over this row's glass, as it does over the bar's. */
+  z-index: auto;
   min-width: 0;
   /* Size to the icons, not to the narrower bar it's positioned in; wrap only past the room available. */
   width: max-content;
@@ -475,7 +477,7 @@
   transform-origin: var(--_lg-magnify-origin);
   translate: calc(var(--_lg-magnify, 0) * var(--_lg-magnify-lift, 10px) * var(--_lg-magnify-x))
     calc(var(--_lg-magnify, 0) * var(--_lg-magnify-lift, 10px) * var(--_lg-magnify-y));
-  scale: calc(1 + var(--_lg-magnify, 0) * (var(--_lg-magnify-scale, 1.4) - 1));
+  scale: calc((1 + var(--_lg-magnify, 0) * (var(--_lg-magnify-scale, 1.4) - 1)) * (1 + var(--_lg-bounce, 0) * .22));
 }
 
 /* Compacting in motion: labels shrink to nothing (or grow back) by the script's spring value. */
@@ -489,3 +491,11 @@
   max-height: calc(var(--_lg-label-h, 1.2em) * (1 - var(--_lg-compact, 0)));
   opacity: calc(1 - var(--_lg-compact, 0) * 1.5);
 }
+
+/* The gradual highlight's copies of a label or icon in the selected colour, clipped to the lens. */
+.lg-navbar .lg-navbar__ink { position: absolute; margin: 0; max-width: none; pointer-events: none; white-space: nowrap; }
+
+/* Tap feedback (animations: { tap }): the pressed tab squishes a little and a newly selected icon bounces.
+   The script springs --_lg-press and --_lg-bounce. */
+.lg-navbar--anim-tap :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) { scale: calc(1 - var(--_lg-press, 0) * .08); }
+.lg-navbar--anim-tap:not(.lg-navbar--magnify) [data-navbar-icon] { scale: calc(1 + var(--_lg-bounce, 0) * .22); }
