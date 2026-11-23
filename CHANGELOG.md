@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-23
+
+### Added
+
+- Safari bends the backdrop too. Safari can't apply SVG filters through `backdrop-filter`, so there the glass bends a copy of the elements you mark: `data-navbar-refract` for a fixed backdrop, `data-navbar-refract="scroll"` for content that scrolls under the bar, or your own list through the new `refractionSources` option. The copy follows scrolling from the scroll event. `refreshRefraction()` copies the marked content again after it changes.
+- While text, media or an image sits behind a piece of glass, its icons and labels get a soft halo so they stay readable. Set the colours with `--lg-nav-halo` and `--lg-nav-on-dark-halo`.
+- Over images, a piece of glass takes the image's colour for its rim, top highlight and shadow, and eases back when the image has passed.
+
+### Changed
+
+- The bend follows Liquid Glass on iOS: tinted glass folds the backdrop over in a deep band along its rounded edge, and fully clear glass squeezes it into a wide bevel. Bent glass isn't blurred, and fully clear glass doesn't soften or dim what's behind it.
+
 ## [0.9.0] - 2026-11-23
 
 ### Added
@@ -187,6 +199,7 @@ All new behavior is opt-in; the single-row bar is unchanged by default.
 - Respects Reduce Motion and Reduce Transparency.
 
 [Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.9.0...HEAD
+[0.10.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.6.0...v0.7.0

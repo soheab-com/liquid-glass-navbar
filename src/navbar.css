@@ -20,7 +20,7 @@
   border-radius: 999px;
   box-shadow: inset 0 1px 0 var(--lg-nav-highlight, rgb(255 255 255 / .9)), 0 10px 28px var(--lg-nav-shadow, rgb(22 37 56 / .24));
   -webkit-backdrop-filter: blur(calc(16px * var(--lg-nav-tint, .4))) saturate(calc(1 + .55 * var(--lg-nav-tint, .4)));
-  backdrop-filter: var(--lg-nav-refraction-filter, blur(0px)) blur(calc(16px * var(--lg-nav-tint, .4))) saturate(calc(1 + .55 * var(--lg-nav-tint, .4)));
+  backdrop-filter: var(--lg-nav-refraction-filter, blur(0px)) blur(calc(var(--lg-nav-blur, 16px) * var(--lg-nav-tint, .4))) saturate(calc(1 + .55 * var(--lg-nav-tint, .4)));
   pointer-events: none;
 }
 .lg-navbar--enabled:not(.lg-navbar--sectioned)::after,
@@ -499,3 +499,48 @@
    The script springs --_lg-press and --_lg-bounce. */
 .lg-navbar--anim-tap :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) { scale: calc(1 - var(--_lg-press, 0) * .08); }
 .lg-navbar--anim-tap:not(.lg-navbar--magnify) [data-navbar-icon] { scale: calc(1 + var(--_lg-bounce, 0) * .22); }
+
+/* Safari bends a copy of the marked backdrop (see refractionSources), clipped to the glass shape. It stacks above
+   the glass's base layer (::before) and below its tint (::after) and the items, without isolating the glass: that
+   would trap the glass's popovers under later page content. Inset by 1px so the rim stays visible. Neither box gets
+   any other filter: Safari drops the bend's SVG filter when it's chained with CSS filters or sits inside another
+   filtered element. */
+.lg-navbar__refraction-copy {
+  position: absolute;
+  inset: 1px;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.lg-navbar__refraction-lens { position: absolute; inset: 0; }
+/* WebKit sizes a bounding-box filter to everything inside the filtered element, so the copies are clipped one level
+   below it. */
+.lg-navbar__refraction-frame { position: absolute; inset: 0; overflow: hidden; contain: paint; }
+
+/* Readable items on bent glass: the backdrop shows through at full strength, so while text, media or an image sits
+   behind a piece of glass (the script marks it busy), its icons and labels get a soft halo in the glass's surface
+   colour, like iOS does over busy content. Over dark content the halo turns dark. */
+.lg-navbar__glass--busy {
+  --_lg-halo: var(--lg-nav-halo, rgb(250 252 255 / .92));
+}
+[data-lg-navbar-backdrop="dark"] .lg-navbar__glass--busy,
+[data-lg-navbar-backdrop="dark"].lg-navbar__glass--busy {
+  --_lg-halo: var(--lg-nav-on-dark-halo, rgb(14 22 34 / .85));
+}
+.lg-navbar__glass--busy :is(button, a),
+:is(button, a).lg-navbar__glass--busy {
+  text-shadow: 0 0 1px var(--_lg-halo), 0 0 4px var(--_lg-halo), 0 0 10px var(--_lg-halo);
+}
+.lg-navbar__glass--busy :is(button, a) svg,
+:is(button, a).lg-navbar__glass--busy svg {
+  filter: drop-shadow(0 0 1px var(--_lg-halo)) drop-shadow(0 0 4px var(--_lg-halo));
+}
+
+/* The rim, highlight and shadow take the colour of images behind the glass (set by the script); ease between them. */
+@media (prefers-reduced-motion: no-preference) {
+  .lg-navbar--enabled:not(.lg-navbar--sectioned)::before,
+  .lg-navbar--enabled > [data-navbar-section]::before,
+  .lg-navbar--enabled .lg-navbar__surface::before,
+  .lg-navbar--enabled .lg-navbar__overflow--shared::before { transition: border-color .35s ease, box-shadow .35s ease; }
+}

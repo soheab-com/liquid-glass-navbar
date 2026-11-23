@@ -1,7 +1,7 @@
 import { watchScrollDirection, type ScrollCompactOptions } from './compact.js';
 import { readBackdrop, type BackdropSignal, type BackdropTone, type ContrastOptions } from './contrast.js';
 import { createAnchoredPopover, type AnchoredPopover, type AnchoredPopoverOptions } from './popover.js';
-import { mountRefraction, supportsBackdropRefraction } from './refraction.js';
+import { mountRefraction, refractionMode, type RefractionSources } from './refraction.js';
 import { createSpring, rubberBanded, type Spring } from './spring.js';
 
 export { createAnchoredPopover, watchScrollDirection };
@@ -106,6 +106,14 @@ export interface LiquidGlassNavbarOptions {
   equalWidthOverflow?: EqualWidthOverflow;
   background?: string;
   transparency?: number;
+  /**
+   * Safari can't bend what's behind an element, so there the glass bends a copy of these elements instead (a CSS
+   * selector or a function). Defaults to `[data-navbar-refract]`; mark the page's backdrop, such as a fixed wallpaper.
+   * With the default, elements that scroll only take part with `data-navbar-refract="scroll"`, because their copy
+   * follows scrolling from script and can trail a little on iOS; elements you pass yourself are always taken.
+   * Chromium bends the live page and ignores this.
+   */
+  refractionSources?: RefractionSources;
   colors?: NavbarColors;
   reorderable?: boolean;
   /** Multi-row layout. Assign items or sections to rows with `data-navbar-row="2"`. */
@@ -175,6 +183,8 @@ export interface LiquidGlassNavbar {
   setEqualWidth(equal: boolean, overflow?: EqualWidthOverflow): void;
   setBackground(background?: string): void;
   setTransparency(percentage?: number): void;
+  /** Safari only: copy the `refractionSources` again after their content changed. */
+  refreshRefraction(): void;
   setColors(colors?: NavbarColors): void;
   setItemVisibility(item: NavbarItem, visibility: ItemVisibility): void;
   setReorderMode(active: boolean): void;
@@ -274,7 +284,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   lens.setAttribute('aria-hidden', 'true');
   nav.classList.add('lg-navbar');
   nav.prepend(lens);
-  const refraction = supportsBackdropRefraction() ? mountRefraction(nav) : undefined;
+  const mode = refractionMode();
+  const refraction = mode ? mountRefraction(nav, mode, options.refractionSources) : undefined;
 
   let placement = options.position;
   let reorderMode = false;
@@ -2003,6 +2014,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     setEqualWidth,
     setBackground,
     setTransparency,
+    refreshRefraction: () => refraction?.refreshSources(),
     setColors,
     setItemVisibility(button, { icon, label }) {
       if (!items().includes(button)) throw new Error('The button does not belong to this navbar.');
