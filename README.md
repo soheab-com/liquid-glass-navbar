@@ -15,7 +15,7 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 It isn't on npm. Install it from GitHub:
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.9.0'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.10.0'
 ```
 
 You need a bundler (Vite, esbuild, webpack and so on), because the package ships TypeScript and CSS.
@@ -76,6 +76,16 @@ Everything is explained, with live examples, in the [docs](https://soheab.com/na
 [TypeScript types](https://soheab.com/navbar-builder/docs/#types),
 [HTML attributes](https://soheab.com/navbar-builder/docs/#attributes) and
 [CSS variables](https://soheab.com/navbar-builder/docs/#css).
+
+## Code map
+
+- [Local API index](docs/api.md) — integration, public types, and instance methods. The hosted docs also have a [plain-text index](https://soheab.com/navbar-builder/docs/llms.txt).
+- [src/index.ts](src/index.ts) — package entry point, public types, selection, swipe gestures, layout, overflow, and lifecycle.
+- [src/navbar.css](src/navbar.css) — layout, glass styling, custom properties, and accessibility media queries.
+- [src/popover.ts](src/popover.ts) — shared anchored popovers, including the surface used by the More menu.
+- [src/spring.ts](src/spring.ts) — spring motion and rubber-band math.
+- [src/compact.ts](src/compact.ts), [src/contrast.ts](src/contrast.ts), and [src/refraction.ts](src/refraction.ts) — scroll direction, backdrop tone detection, and glass refraction.
+- [examples/demo.ts](examples/demo.ts) and [examples/index.html](examples/index.html) — interactive demo with controls. [examples/features.ts](examples/features.ts) and [examples/features.html](examples/features.html) — focused scenarios for layout, overflow, and other options.
 
 ## Run the demo
 
