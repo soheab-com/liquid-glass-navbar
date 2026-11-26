@@ -170,15 +170,22 @@ const navbar = mountLiquidGlassNavbar(document.querySelector('#catalog')!, {
 - [src/compact.ts](src/compact.ts), [src/contrast.ts](src/contrast.ts), and [src/refraction.ts](src/refraction.ts) — scroll direction, backdrop tone detection, and glass refraction.
 - [examples/demo.ts](examples/demo.ts) and [examples/index.html](examples/index.html) — interactive demo with controls. [examples/features.ts](examples/features.ts) and [examples/features.html](examples/features.html) — focused scenarios for layout, overflow, and other options.
 
-## Run the demo
+## Run the demo and tests
 
 ```sh
 npm ci
-npm run check
 npm run demo
 ```
 
-Open [the demo](http://127.0.0.1:4173/examples/) or [the multi-row catalog](http://127.0.0.1:4173/examples/catalog.html). The [first-layout lens regression](http://127.0.0.1:4173/tests/rows-lens.html) displays its result in the browser. The [manual More regression](http://127.0.0.1:4173/tests/more-tap.html) checks selection after you open More and tap Settings.
+`npm run demo` serves the [demo](examples/index.html), the [feature examples](examples/features.html), and the [multi-row catalog](examples/catalog.html) at `http://127.0.0.1:4173/examples/`.
+
+```sh
+npm run check      # strict TypeScript
+npm test           # unit tests (Vitest)
+npm run test:e2e   # end-to-end tests in Chromium, Firefox and WebKit (Playwright)
+```
+
+Run `npx playwright install` once to download the browsers.
 
 ## Changelog
 

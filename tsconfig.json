@@ -11,5 +11,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "examples", "tests"]
+  "include": ["src", "examples", "tests", "e2e", "unit", "playwright.config.ts", "vitest.config.ts"]
 }

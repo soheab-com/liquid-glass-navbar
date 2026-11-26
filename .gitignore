@@ -7,3 +7,6 @@ tests/more-tap.js
 tests/hover-navigation.js
 tests/catalog-rows.js
 dist/
+tests/fixture.js
+test-results/
+playwright-report/

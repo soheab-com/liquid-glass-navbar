@@ -11,4 +11,11 @@ Use the [README code map](README.md#code-map) to find the implementation and the
 
 ## Verify changes
 
-Run `npm ci`, then `npm run check` for strict TypeScript checking and `npm run demo` to exercise the navbar at `http://127.0.0.1:4173/examples/`. Browser behavior needs a browser check in addition to the type check. The examples' TypeScript and HTML are the source files. Their generated JavaScript is ignored.
+Run `npm ci`, then:
+
+- `npm run check` for strict TypeScript checking.
+- `npm test` for the Vitest unit tests (springs, rim maps, visible limits, update keys).
+- `npm run test:e2e` for the Playwright suite in Chromium, Firefox, and WebKit. It starts its own server. `npx playwright install` downloads the browsers.
+- `npm run build` and `npm run test:ssr` to check the published package imports in plain Node.
+
+`npm run demo` serves the examples at `http://127.0.0.1:4173/examples/`. The examples' and tests' TypeScript and HTML are the source files. Their generated JavaScript is ignored. Interaction changes need an end-to-end test as well as the type check.
