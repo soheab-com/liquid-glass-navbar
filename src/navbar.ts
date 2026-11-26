@@ -2561,8 +2561,14 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   observer.observe(nav);
   if (nav.parentElement) observer.observe(nav.parentElement);
   // A bar that fell back to natural widths may fit equal ones again after the window grows, without itself resizing.
+  let windowFrame = 0;
   addEventListener('resize', () => {
-    if ((equalWidth || overflow || layout !== 'row') && !gesture?.dragging) sync(true);
+    // One layout per frame however many resize events arrive.
+    if (windowFrame) return;
+    windowFrame = disposer.frame(() => {
+      windowFrame = 0;
+      if ((equalWidth || overflow || layout !== 'row') && !gesture?.dragging) sync(true);
+    });
   }, { signal, passive: true });
   // Web fonts change label widths after the first layout.
   document.fonts?.addEventListener?.('loadingdone', () => sync(true), { signal });
