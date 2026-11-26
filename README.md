@@ -15,7 +15,7 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 It isn't on npm. Install it from GitHub:
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.11.2'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.12.0'
 ```
 
 You need a bundler (Vite, esbuild, webpack and so on), because the package ships TypeScript and CSS.
@@ -76,6 +76,18 @@ Everything is explained, with live examples, in the [docs](https://soheab.com/na
 [TypeScript types](https://soheab.com/navbar-builder/docs/#types),
 [HTML attributes](https://soheab.com/navbar-builder/docs/#attributes) and
 [CSS variables](https://soheab.com/navbar-builder/docs/#css).
+
+## Jump on hover
+
+Use same-page links such as `<a href="#settings">Settings</a>` and opt in with `hoverNavigation: true`. A hover or drag previews the section without selecting the tab, changing the hash, or adding a history entry. Moving away restores the previous scroll position. Clicking or completing a swipe still follows the link normally.
+
+```ts
+mountLiquidGlassNavbar(nav, {
+  hoverNavigation: { delay: 2000, keep: true },
+});
+```
+
+`delay` defaults to zero in milliseconds. Set `keep: true` to leave the page at the previewed position, or `swipe: false` to preview only with a hovering pointer. Add `data-navbar-no-hover` to opt an item or section out. For button tabs or custom destinations, supply `onPreview(item)` and optionally `onPreviewEnd()` to manage your own preview. The built-in behavior only scrolls to IDs in the current document. Give two bars the same `group` value to preview and select across them in one swipe. Try the [hover navigation example](http://127.0.0.1:4173/tests/hover-navigation.html) with the demo server running.
 
 ## Multi-row navigation
 

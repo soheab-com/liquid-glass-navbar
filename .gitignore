@@ -4,3 +4,4 @@ examples/features.js
 examples/catalog.js
 tests/rows-lens.js
 tests/more-tap.js
+tests/hover-navigation.js

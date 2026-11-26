@@ -1,3 +1,5 @@
+import { bindHoverNavigation, type NavbarHoverOptions } from './hover.js';
+export type { NavbarHoverOptions } from './hover.js';
 import { watchScrollDirection, type ScrollCompactOptions } from './compact.js';
 import { readBackdrop, type BackdropSignal, type BackdropTone, type ContrastOptions } from './contrast.js';
 import { createAnchoredPopover, type AnchoredPopover, type AnchoredPopoverOptions } from './popover.js';
@@ -163,6 +165,8 @@ export interface LiquidGlassNavbarOptions {
   refractionSources?: RefractionSources | false;
   colors?: NavbarColors;
   lens?: NavbarLensOptions;
+  /** Preview same-page destinations while hovering or swiping. Off by default. */
+  hoverNavigation?: boolean | NavbarHoverOptions;
   reorderable?: boolean;
   /** Multi-row layout. Assign items or sections to rows with `data-navbar-row="2"`. */
   layout?: NavbarLayout;
@@ -2751,6 +2755,15 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   setBackground(options.background);
   setTransparency(options.transparency);
   setColors(options.colors);
+  const stopHoverNavigation = options.hoverNavigation && bindHoverNavigation(
+    nav, options.hoverNavigation === true ? {} : options.hoverNavigation,
+    (element) => {
+      const item = element?.closest<NavbarItem>('button, a[href]');
+      return item && items().includes(item) && isAvailable(item) && !isAction(item)
+        && allowsSwipe(item) && !item.closest('[data-navbar-no-hover]') ? item : undefined;
+    },
+    () => enabled() && !reorderMode, signal,
+  );
   setLens(options.lens);
   setContrast(options.contrast);
   setScrollCompact(options.scrollCompact);
@@ -2852,6 +2865,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       return registered;
     },
     destroy() {
+      if (stopHoverNavigation) stopHoverNavigation();
       hideContextActions(false);
       for (const popover of [...popovers.values()]) popover.destroy();
       for (const item of [...badges.keys()]) {

@@ -310,6 +310,8 @@
 .lg-navbar--equal.lg-navbar--multirow > [data-navbar-section] { display: flex; }
 /* Gestures that move between rows need vertical movement too. */
 .lg-navbar--enabled.lg-navbar--free { touch-action: none; }
+/* A paired hover bar can also receive a swipe along the cross axis. */
+.lg-navbar--enabled.lg-navbar--hover-group :is(button, a[href]) { touch-action: none; }
 .lg-navbar--lens-away .lg-navbar__lens { visibility: hidden; }
 
 /* More */

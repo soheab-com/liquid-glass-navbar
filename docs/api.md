@@ -17,6 +17,7 @@ Supply a nav element containing buttons or `<a href="…">` items. Mark the star
 | Collapse numbered rows | `collapsible`, `setCollapsed(value)`, `collapsed`, `onCollapse`, `onResize` |
 | Hide or reconcile content | `setItemHidden(item, hidden)`, `update(replacementNav, options)`, `data-navbar-key` |
 | Size and limit a section | `data-navbar-equal`, `data-navbar-max-visible`, `NavbarVisibleLimit` |
+| Preview sections on hover or swipe | `hoverNavigation`, `NavbarHoverOptions`, and `data-navbar-no-hover` |
 | Style the lens | `lens`, `setLens(options)`, `NavbarLensOptions`, and `NavbarLensStyle` |
 | Refresh inherited colors | `setColors(colors)`, `refreshColors()`, `ContrastOptions.halo` and `ContrastOptions.glow` |
 | Unmount | Call `navbar.destroy()` when disposing of the instance |
