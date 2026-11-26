@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-11-26
+
+### Fixed
+
+- Tapping or clicking a manually opened More menu item now selects it before the menu closes, including with Reduce Motion.
+- The popover starts its opening spring from the current visual state and avoids redundant navbar layout work for menu-style More.
+
+### Added
+
+- Pass `refractionSources: false` to use native blur instead of copied refraction in Safari on busy pages.
+
 ## [0.11.1] - 2026-11-26
 
 ### Fixed
@@ -220,7 +231,8 @@ All new behavior is opt-in; the single-row bar is unchanged by default.
 - Colors come from CSS variables (`--lg-nav-accent`, `--lg-nav-muted`, `--lg-nav-surface` and friends), with light and dark looks in the examples.
 - Respects Reduce Motion and Reduce Transparency.
 
-[Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.11.2...HEAD
+[0.11.2]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.9.0...v0.10.0

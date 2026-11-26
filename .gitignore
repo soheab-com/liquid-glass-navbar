@@ -3,3 +3,4 @@ examples/demo.js
 examples/features.js
 examples/catalog.js
 tests/rows-lens.js
+tests/more-tap.js

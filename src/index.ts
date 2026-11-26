@@ -158,9 +158,9 @@ export interface LiquidGlassNavbarOptions {
    * selector or a function). Defaults to `[data-navbar-refract]`; mark the page's backdrop, such as a fixed wallpaper.
    * With the default, elements that scroll only take part with `data-navbar-refract="scroll"`, because their copy
    * follows scrolling from script and can trail a little on iOS; elements you pass yourself are always taken.
-   * Chromium bends the live page and ignores this.
+   * Pass false to use native blur instead of copied refraction in Safari. Chromium bends the live page and ignores this.
    */
-  refractionSources?: RefractionSources;
+  refractionSources?: RefractionSources | false;
   colors?: NavbarColors;
   lens?: NavbarLensOptions;
   reorderable?: boolean;
@@ -346,7 +346,9 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   nav.classList.add('lg-navbar');
   nav.prepend(lens);
   const mode = refractionMode();
-  const refraction = mode ? mountRefraction(nav, mode, options.refractionSources) : undefined;
+  const refraction = mode && (mode !== 'copy' || options.refractionSources !== false)
+    ? mountRefraction(nav, mode, options.refractionSources || undefined)
+    : undefined;
 
   let placement = options.position;
   let reorderMode = false;
@@ -690,6 +692,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       label: settings.label ?? 'More',
       className: `lg-navbar__popover lg-navbar__popover--${style}`,
       bindTrigger: false,
+      // The navbar delegates activation to real menu items. Let it select before the menu becomes inert.
+      closeOnSelect: false,
       // Clear the pill around More rather than More itself.
       anchor: () => button.parentElement,
       gap: style === 'expand' ? 12 : 10,
@@ -697,8 +701,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       spring: () => motionOn('popovers'),
       // Read each time, so setOverflow changes it without rebuilding More.
       get closeOnScroll() { return overflow?.closeOnScroll ?? false; },
-      onOpen: () => sync(),
-      onClose: () => sync(),
+      onOpen: () => { if (style === 'expand') sync(); },
+      onClose: () => { if (style === 'expand') sync(); },
     });
     more = { button, dot, host, popover };
     return more;

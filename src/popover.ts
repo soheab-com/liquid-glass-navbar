@@ -96,7 +96,6 @@ export function createAnchoredPopover(
   trigger.setAttribute('aria-expanded', 'false');
 
   let open = false;
-  let motion: Animation | undefined;
   let frame = 0;
 
   function setContent(next: Node | readonly Node[]): void {
@@ -179,8 +178,6 @@ export function createAnchoredPopover(
       openness?.stop();
       bouncy = bounce;
       openness = createSpring(from, (value) => {
-        // Closing ends as soon as it's out of sight, rather than waiting for the spring to settle completely.
-        if (!open && value < .04) return finishClosing();
         const shift = element.dataset.side === 'below' ? -6 : 6;
         element.style.opacity = String(Math.max(0, Math.min(1, value)));
         element.style.transform = `translateY(${(shift * (1 - value)).toFixed(2)}px) scale(${(.9 + .1 * value).toFixed(4)})`;
@@ -198,6 +195,8 @@ export function createAnchoredPopover(
     element.style.pointerEvents = show ? '' : 'none';
     if (show) element.removeAttribute('inert');
     else element.setAttribute('inert', '');
+    // Paint the current spring position before the first opening frame.
+    if (!openness.moving) openness.set(openness.value);
     openness.to(show ? 1 : 0);
   }
 
@@ -209,10 +208,9 @@ export function createAnchoredPopover(
   }
 
   function animate(show: boolean): void {
-    motion?.cancel();
-    motion = undefined;
-    if (reducedMotion() || typeof element.animate !== 'function') {
-      openness?.set(show ? 1 : 0);
+    if (reducedMotion()) {
+      finishClosing();
+      openness = undefined;
       element.hidden = !show;
       return;
     }
@@ -308,7 +306,6 @@ export function createAnchoredPopover(
       listeners.abort();
       observer.disconnect();
       cancelAnimationFrame(frame);
-      motion?.cancel();
       openness?.stop();
       element.remove();
       for (const [name, value] of [['aria-controls', original.controls], ['aria-expanded', original.expanded], ['aria-haspopup', original.popup]] as const) {

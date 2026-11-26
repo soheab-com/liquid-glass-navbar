@@ -15,7 +15,7 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 It isn't on npm. Install it from GitHub:
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.11.1'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.11.2'
 ```
 
 You need a bundler (Vite, esbuild, webpack and so on), because the package ships TypeScript and CSS.
@@ -128,7 +128,7 @@ const navbar = mountLiquidGlassNavbar(document.querySelector('#catalog')!, {
 - **Items and sections.** `navbar.setItemHidden(item, true)` removes an item from layout and More, while retaining its DOM node and selection. Pass `false` to show it. Neighbours spring to their new positions. Add `data-navbar-equal` to a section for equal widths within that section.
 - **Overflow.** `moreLabel: false` hides the visual More label while preserving its accessible name. `maxVisible` accepts a number, a map of minimum viewport widths to limits, or a function of viewport width. With overflow enabled, `data-navbar-max-visible="2"` caps a section at two items. Pinned items count toward the cap and stay visible even if they exceed it. Swipe the lens onto More to preview its menu. Swipe away to close the preview, or release on More to leave it open. More and the automatic collapse toggle are excluded from the visible-item limit. Collapsible bars give persistent rows first choice of the shared limit, so opening a row above the main tabs doesn’t bump those tabs into More.
 - **Lens appearance.** Use `lens: { style: 'glass' | 'tinted' | 'outline', accent }` at mount or call `navbar.setLens(options)` to change it live. By default the lens uses a softened version of the selected icon color, with a translucent fill and a clearer rim. A lens accent overrides that color independently. Pass a CSS color expression, or set `--lg-nav-lens-accent` in your stylesheet. Use `background` or `radius` to customize the fill or shape. Set `blur` in pixels for the drag backdrop, and use `pressScale` and `dragScale` for zoom. Each scale accepts a number or an `[x, y]` pair. Reduce Motion disables lens zoom, and Reduce Transparency disables lens backdrop blur. `setLens()` restores the stylesheet defaults.
-- **Colors and contrast.** `setColors()` accepts CSS color expressions in the navbar’s style scope, including `var()` and `color-mix()`. Resting colors follow the cascade automatically. If the theme changes during a gesture or lens glide, call `refreshColors()` to rebuild the active color overlays. `contrast: { halo: false, glow: false }` disables the icon and label effects independently. Both default to enabled.
+- **Colors and contrast.** `setColors()` accepts CSS color expressions in the navbar’s style scope, including `var()` and `color-mix()`. Resting colors follow the cascade automatically. If the theme changes during a gesture or lens glide, call `refreshColors()` to rebuild the active color overlays. `contrast: { halo: false, glow: false }` disables the icon and label effects independently. Both default to enabled. Use `refractionSources: false` for native blur in Safari when a page has a lot of moving content.
 - **Content updates.** Call `navbar.update(replacementNav, { key, animate })` with a detached or parsed nav containing the new items and sections. The mounted nav and its attributes stay in place. New items are moved from detached replacement markup, preserving their listeners. Use a stable `data-navbar-key`, an ID, or a custom `key(element)` function to retain nodes when their link or label changes. Numbered sections fall back to their row number, links to their literal `href`, and unkeyed nodes to matching markup. Supply unique keys for repeated destinations or multiple sections in the same row. Use `aria-current="page"` in the replacement to choose the next tab. The lens glides to it, new items rise in, and removed items fade out. Pass `animate: false` for an immediate update. Application-level selection callbacks still fire only on activation.
 
 ## Code map
@@ -149,7 +149,7 @@ npm run check
 npm run demo
 ```
 
-Open [the demo](http://127.0.0.1:4173/examples/) or [the multi-row catalog](http://127.0.0.1:4173/examples/catalog.html). The [first-layout lens regression](http://127.0.0.1:4173/tests/rows-lens.html) displays its result in the browser.
+Open [the demo](http://127.0.0.1:4173/examples/) or [the multi-row catalog](http://127.0.0.1:4173/examples/catalog.html). The [first-layout lens regression](http://127.0.0.1:4173/tests/rows-lens.html) displays its result in the browser. The [manual More regression](http://127.0.0.1:4173/tests/more-tap.html) checks selection after you open More and tap Settings.
 
 ## Changelog
 
