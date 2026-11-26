@@ -19,3 +19,9 @@ Run `npm ci`, then:
 - `npm run build` and `npm run test:ssr` to check the published package imports in plain Node.
 
 `npm run demo` serves the examples at `http://127.0.0.1:4173/examples/`. The examples' and tests' TypeScript and HTML are the source files. Their generated JavaScript is ignored. Interaction changes need an end-to-end test as well as the type check.
+
+## Commits and releases
+
+- Give each feature, bug fix, or other change its own commit. Combine changes in one commit only when they can't be separated or are closely related.
+- Write a clear one-line commit message with no description body.
+- Keep releases out of change commits. A release is its own commit that bumps the version and can include the changelog entry. Tag that commit.
