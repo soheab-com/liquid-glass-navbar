@@ -97,14 +97,16 @@ function mount(): void {
   } else {
     nav.replaceChildren(...buttons);
   }
+  const edge = positions.find((choice) => choice === position.value);
+  const palette = COLOR_PRESETS[colors.value];
   navbar = mountLiquidGlassNavbar(nav, {
-    position: positions.find((edge) => edge === position.value),
+    ...(edge ? { position: edge } : {}),
     labels: labels.checked,
     equalWidth: equal.checked,
     equalWidthOverflow: equalOverflow.value as EqualWidthOverflow,
-    background: background.value || undefined,
+    ...(background.value ? { background: background.value } : {}),
     transparency: Number(transparency.value),
-    colors: COLOR_PRESETS[colors.value],
+    ...(palette ? { colors: palette } : {}),
     reorderable: true,
     onSelect(button) {
       status.textContent = `Selected ${button.dataset.name}.`;

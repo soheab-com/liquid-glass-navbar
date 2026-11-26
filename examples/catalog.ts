@@ -14,7 +14,7 @@ const lensPressScale = document.querySelector<HTMLInputElement>('#lens-press-sca
 const lensDragScale = document.querySelector<HTMLInputElement>('#lens-drag-scale')!;
 const lensOptions = (): NavbarLensOptions => ({
   style: lensStyle.value as NavbarLensStyle,
-  accent: customLensAccent.checked ? lensAccent.value : undefined,
+  ...(customLensAccent.checked ? { accent: lensAccent.value } : {}),
   blur: lensBlur.valueAsNumber,
   // Each slider keeps the original ratio of horizontal to vertical growth.
   pressScale: [lensPressScale.valueAsNumber, 1 + (lensPressScale.valueAsNumber - 1) * .05 / .08],

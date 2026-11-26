@@ -1854,7 +1854,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       const intoRevealedRows = gesture.collapseBeforePreview && towardRevealedRows(point);
       if (!intoRevealedRows) {
         const previous = gesture.collapseBeforePreview;
-        gesture.collapseBeforePreview = undefined;
+        delete gesture.collapseBeforePreview;
         applyCollapse(previous);
         buttons = candidates();
         point = pointOf(event);
@@ -2314,7 +2314,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   function setCollapsed(value: boolean): void {
     if (!collapseOptions || signal.aborted) return;
     const previous = gesture?.collapseBeforePreview ?? collapsed;
-    if (gesture) gesture.collapseBeforePreview = undefined;
+    if (gesture) delete gesture.collapseBeforePreview;
     applyCollapse(value);
     if (value !== previous) options.onCollapse?.(value);
   }
