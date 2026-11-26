@@ -249,6 +249,10 @@ Run `npx playwright install` once to download the browsers.
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
+## License
+
+[Mozilla Public License 2.0](LICENSE). You can use the navbar in any project, open or closed. If you change its own files and ship them, you share those changes under the same license; your app's code stays yours.
+
 ## Disclaimer
 
 This project isn't made by, affiliated with or endorsed by Apple. Apple and iOS are trademarks of Apple Inc. Liquid Glass is Apple's name for its design style; this is an independent take on the look.
