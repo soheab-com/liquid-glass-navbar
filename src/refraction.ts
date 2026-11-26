@@ -17,7 +17,8 @@ interface RimShape {
   bevel: boolean;
 }
 
-function rimShape(radius: number, clear: boolean): RimShape {
+/** @internal Exported for unit tests. */
+export function rimShape(radius: number, clear: boolean): RimShape {
   if (clear) {
     // A deep bevel (most of a pill's half-height) whose content is pulled out toward the edge, so the backdrop
     // smears along the outline: roads follow the corners and a bar turns into streaks, like iOS sheets and tab bars.
@@ -28,14 +29,12 @@ function rimShape(radius: number, clear: boolean): RimShape {
   return { rim: Math.max(6, radius * .7), scale: Math.round(radius * 3), bevel: false };
 }
 
-function rimMap(width: number, height: number, corner: number, clear: boolean): string | null {
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext('2d');
-  if (!context) return null;
-
-  const image = context.createImageData(width, height);
+/**
+ * @internal The displacement map as RGBA pixels: red and green carry the x and y pull around 128, blue is 128 and
+ * alpha 255. Exported for unit tests; `rimMap` turns it into an image.
+ */
+export function rimPixels(width: number, height: number, corner: number, clear: boolean): Uint8ClampedArray {
+  const data = new Uint8ClampedArray(width * height * 4);
   const radius = Math.max(4, Math.min(corner, width / 2, height / 2));
   const { rim, scale, bevel } = rimShape(radius, clear);
   for (let y = 0; y < height; y++) {
@@ -59,12 +58,23 @@ function rimMap(width: number, height: number, corner: number, clear: boolean): 
       }
       const unit = outward * 255 / scale / (length || 1);
       const index = (y * width + x) * 4;
-      image.data[index] = Math.min(255, Math.max(0, 128 + nx * unit));
-      image.data[index + 1] = Math.min(255, Math.max(0, 128 + ny * unit));
-      image.data[index + 2] = 128;
-      image.data[index + 3] = 255;
+      data[index] = Math.min(255, Math.max(0, 128 + nx * unit));
+      data[index + 1] = Math.min(255, Math.max(0, 128 + ny * unit));
+      data[index + 2] = 128;
+      data[index + 3] = 255;
     }
   }
+  return data;
+}
+
+function rimMap(width: number, height: number, corner: number, clear: boolean): string | null {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) return null;
+  const image = context.createImageData(width, height);
+  image.data.set(rimPixels(width, height, corner, clear));
   context.putImageData(image, 0, 0);
   return canvas.toDataURL();
 }
