@@ -1,4 +1,4 @@
-import { mountLiquidGlassNavbar, type NavbarItem, type NavbarLensStyle, type NavbarLensOptions } from '../src/index.js';
+import { mountLiquidGlassNavbar, type NavbarItem, type NavbarLensOptions, type NavbarLensStyle } from '../src/index.js';
 
 const root = document.documentElement;
 const nav = document.querySelector<HTMLElement>('#catalog-nav')!;
@@ -17,8 +17,8 @@ const lensOptions = (): NavbarLensOptions => ({
   ...(customLensAccent.checked ? { accent: lensAccent.value } : {}),
   blur: lensBlur.valueAsNumber,
   // Each slider keeps the original ratio of horizontal to vertical growth.
-  pressScale: [lensPressScale.valueAsNumber, 1 + (lensPressScale.valueAsNumber - 1) * .05 / .08],
-  dragScale: [lensDragScale.valueAsNumber, 1 + (lensDragScale.valueAsNumber - 1) * .38 / .22],
+  pressScale: [lensPressScale.valueAsNumber, 1 + ((lensPressScale.valueAsNumber - 1) * 0.05) / 0.08],
+  dragScale: [lensDragScale.valueAsNumber, 1 + ((lensDragScale.valueAsNumber - 1) * 0.38) / 0.22],
 });
 const pin = document.querySelector<HTMLButtonElement>('#top-visibility')!;
 const paths = {
@@ -67,10 +67,17 @@ function section(row: number, ...buttons: HTMLButtonElement[]): HTMLElement {
 
 function build(): HTMLElement {
   const replacement = document.createElement('nav');
-  const filters = section(1, ...['All', 'TypeScript', 'Python', 'Rust', 'Java', 'Go'].map((label) => item(label.toLowerCase(), label, 'filter')));
+  const filters = section(
+    1,
+    ...['All', 'TypeScript', 'Python', 'Rust', 'Java', 'Go'].map((label) => item(label.toLowerCase(), label, 'filter')),
+  );
   filters.dataset.navbarMaxVisible = '0:2 900:none';
-  const presets = section(2, ...['All presets', 'Recent', 'Favorites', 'Languages', 'Popular']
-    .map((label) => item(label.toLowerCase(), label, 'star')));
+  const presets = section(
+    2,
+    ...['All presets', 'Recent', 'Favorites', 'Languages', 'Popular'].map((label) =>
+      item(label.toLowerCase(), label, 'star'),
+    ),
+  );
   if (!packages) presets.firstElementChild?.setAttribute('aria-current', 'page');
   for (const preset of presets.children) preset.setAttribute('data-navbar-overflow', 'never');
   presets.dataset.navbarEqual = '';
@@ -90,15 +97,17 @@ function build(): HTMLElement {
 
 function render(label: string): void {
   status.textContent = label;
-  entries.replaceChildren(...Array.from({ length: 24 }, (_, index) => {
-    const entry = document.createElement('li');
-    const name = document.createElement('strong');
-    name.textContent = `${label} ${index + 1}`;
-    const details = document.createElement('small');
-    details.textContent = ['TypeScript', 'Python', 'Rust'][index % 3];
-    entry.append(name, details);
-    return entry;
-  }));
+  entries.replaceChildren(
+    ...Array.from({ length: 24 }, (_, index) => {
+      const entry = document.createElement('li');
+      const name = document.createElement('strong');
+      name.textContent = `${label} ${index + 1}`;
+      const details = document.createElement('small');
+      details.textContent = ['TypeScript', 'Python', 'Rust'][index % 3];
+      entry.append(name, details);
+      return entry;
+    }),
+  );
 }
 
 nav.append(...build().children);
@@ -108,7 +117,10 @@ const bar = mountLiquidGlassNavbar(nav, {
   layout: 'rows',
   maxRows: 3,
   viewTransitionName: 'demo-catalog-navigation',
-  collapsible: { rows: [1, 2], initial: localStorage.getItem('navbar-demo-collapsed') === 'true' ? 'collapsed' : 'open' },
+  collapsible: {
+    rows: [1, 2],
+    initial: localStorage.getItem('navbar-demo-collapsed') === 'true' ? 'collapsed' : 'open',
+  },
   onCollapse: (collapsed) => localStorage.setItem('navbar-demo-collapsed', String(collapsed)),
   onResize: ({ height }) => root.style.setProperty('--catalog-space', `${height}px`),
   overflow: { perRow: true, rowLimits: { 1: 4, 3: { 0: 0, 900: 4 } }, moreLabel: false },
@@ -135,7 +147,11 @@ pin.addEventListener('click', () => {
 let transition: ViewTransition | undefined;
 function replaceCatalog(): void {
   const apply = () => {
-    bar.update(build(), { layout: 'rows', maxRows: showPresets ? 3 : 2, collapsible: { rows: showPresets ? [1, 2] : [1] } });
+    bar.update(build(), {
+      layout: 'rows',
+      maxRows: showPresets ? 3 : 2,
+      collapsible: { rows: showPresets ? [1, 2] : [1] },
+    });
     render(packages ? 'Packages' : 'Libraries');
   };
   transition?.skipTransition();
@@ -143,7 +159,9 @@ function replaceCatalog(): void {
   else {
     transition = document.startViewTransition(apply);
     const current = transition;
-    void current.finished.then(() => { if (transition === current) transition = undefined; });
+    void current.finished.then(() => {
+      if (transition === current) transition = undefined;
+    });
   }
 }
 document.querySelector('#replace')!.addEventListener('click', () => {

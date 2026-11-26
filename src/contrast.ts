@@ -37,7 +37,7 @@ export function readBackdrop(nav: HTMLElement, regions: Iterable<Element>): Requ
     const share = (width * height) / area;
     if (traits.includes('dark')) dark += share;
     if (traits.includes('light')) light += share;
-    if (traits.includes('busy') && share > .18) busy = true;
+    if (traits.includes('busy') && share > 0.18) busy = true;
   }
-  return { tone: dark >= .5 && dark > light ? 'dark' : 'light', busy };
+  return { tone: dark >= 0.5 && dark > light ? 'dark' : 'light', busy };
 }

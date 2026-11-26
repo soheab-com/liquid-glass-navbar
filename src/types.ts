@@ -1,7 +1,8 @@
 // Public types, plus the internal shapes shared across the navbar implementation.
-import type { NavbarHoverOptions } from './hover.js';
+
 import type { ScrollCompactOptions } from './compact.js';
 import type { BackdropSignal, ContrastOptions } from './contrast.js';
+import type { NavbarHoverOptions } from './hover.js';
 import type { AnchoredPopover, AnchoredPopoverOptions } from './popover.js';
 import type { RefractionSources } from './refraction.js';
 import type { SpringOptions } from './spring.js';
@@ -282,7 +283,11 @@ export interface LiquidGlassNavbar {
   setMagnify(options?: boolean | NavbarMagnifyOptions): void;
   setAnimations(options?: boolean | NavbarAnimations): void;
   /** An anchored popover for one of the bar's items. Activating the item, by tap or swipe, toggles it. */
-  createPopover(trigger: NavbarItem, content: Node | readonly Node[], options?: AnchoredPopoverOptions): AnchoredPopover;
+  createPopover(
+    trigger: NavbarItem,
+    content: Node | readonly Node[],
+    options?: AnchoredPopoverOptions,
+  ): AnchoredPopover;
   destroy(): void;
 }
 
@@ -308,9 +313,19 @@ export interface Gesture {
 }
 
 /** @internal */
-export interface Box { left: number; top: number; width: number; height: number }
+export interface Box {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
 /** @internal */
-export interface Unit { element: HTMLElement; width: number; row: number | undefined; equalItemWidth?: number }
+export interface Unit {
+  element: HTMLElement;
+  width: number;
+  row: number | undefined;
+  equalItemWidth?: number;
+}
 
 /** A tab or action: a `<button>`, or an `<a href>` for sites where each tab is its own page. */
 export type NavbarItem = HTMLButtonElement | HTMLAnchorElement;

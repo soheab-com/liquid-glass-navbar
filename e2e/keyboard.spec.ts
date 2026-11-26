@@ -12,8 +12,10 @@ test('Tab reaches each tab in order with a visible focus indicator', async ({ pa
     await expect(focused).toBeFocused();
     const indicator = await focused.evaluate((element) => {
       const style = getComputedStyle(element);
-      return element.matches(':focus-visible') && (style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0
-        || style.boxShadow !== 'none');
+      return (
+        element.matches(':focus-visible') &&
+        ((style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0) || style.boxShadow !== 'none')
+      );
     });
     expect(indicator, `${label} shows focus`).toBe(true);
   }

@@ -23,19 +23,28 @@ export interface Spring {
 }
 
 /** A value that springs towards its target and can be retargeted mid-flight, keeping its speed. */
-export function createSpring(initial: number, onUpdate: (value: number) => void,
-  { response = 0.35, dampingRatio = 1, precision = 0.1, onRest }: SpringOptions = {}): Spring {
+export function createSpring(
+  initial: number,
+  onUpdate: (value: number) => void,
+  { response = 0.35, dampingRatio = 1, precision = 0.1, onRest }: SpringOptions = {},
+): Spring {
   const stiffness = ((2 * Math.PI) / response) ** 2;
   const damping = (4 * Math.PI * dampingRatio) / response;
-  let value = initial, velocity = 0, target = initial, frame = 0, last = 0;
+  let value = initial,
+    velocity = 0,
+    target = initial,
+    frame = 0,
+    last = 0;
 
   const rest = (): void => {
-    value = target; velocity = 0; frame = 0;
+    value = target;
+    velocity = 0;
+    frame = 0;
     onUpdate(value);
     onRest?.(value);
   };
   const step = (now: number): void => {
-    const dt = Math.min((now - last) / 1000, 0.1);     // a stalled tab doesn't fling it
+    const dt = Math.min((now - last) / 1000, 0.1); // a stalled tab doesn't fling it
     last = now;
     // Substeps of at most 1/240 s keep stiff springs stable, and keep a slow frame rate in real time.
     const substeps = Math.max(4, Math.ceil(dt * 240));
@@ -44,7 +53,10 @@ export function createSpring(initial: number, onUpdate: (value: number) => void,
       velocity += (-stiffness * (value - target) - damping * velocity) * h;
       value += velocity * h;
     }
-    if (Math.abs(velocity) < precision * 10 && Math.abs(value - target) < precision) { rest(); return; }
+    if (Math.abs(velocity) < precision * 10 && Math.abs(value - target) < precision) {
+      rest();
+      return;
+    }
     onUpdate(value);
     frame = requestAnimationFrame(step);
   };
@@ -52,17 +64,38 @@ export function createSpring(initial: number, onUpdate: (value: number) => void,
   return {
     to(next, releaseVelocity) {
       target = next;
-      if (reducedMotion()) { cancelAnimationFrame(frame); rest(); return; }
+      if (reducedMotion()) {
+        cancelAnimationFrame(frame);
+        rest();
+        return;
+      }
       if (releaseVelocity !== undefined) velocity = releaseVelocity;
-      if (!frame) { last = performance.now(); frame = requestAnimationFrame(step); }
+      if (!frame) {
+        last = performance.now();
+        frame = requestAnimationFrame(step);
+      }
     },
     set(next) {
-      cancelAnimationFrame(frame); frame = 0; value = target = next; velocity = 0; onUpdate(value);
+      cancelAnimationFrame(frame);
+      frame = 0;
+      value = target = next;
+      velocity = 0;
+      onUpdate(value);
     },
-    stop() { cancelAnimationFrame(frame); frame = 0; velocity = 0; },
-    get value() { return value; },
-    get target() { return target; },
-    get moving() { return frame !== 0; },
+    stop() {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      velocity = 0;
+    },
+    get value() {
+      return value;
+    },
+    get target() {
+      return target;
+    },
+    get moving() {
+      return frame !== 0;
+    },
   };
 }
 

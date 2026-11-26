@@ -6,10 +6,17 @@ let now = 0;
 let queue: FrameRequestCallback[] = [];
 let reduce = false;
 beforeEach(() => {
-  now = 0; queue = []; reduce = false;
+  now = 0;
+  queue = [];
+  reduce = false;
   vi.stubGlobal('performance', { now: () => now });
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { queue.push(callback); return queue.length; });
-  vi.stubGlobal('cancelAnimationFrame', () => { queue = []; });
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    queue.push(callback);
+    return queue.length;
+  });
+  vi.stubGlobal('cancelAnimationFrame', () => {
+    queue = [];
+  });
   vi.stubGlobal('matchMedia', () => ({ matches: reduce }));
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -17,7 +24,8 @@ afterEach(() => vi.unstubAllGlobals());
 function frames(count: number): void {
   for (let i = 0; i < count && queue.length; i++) {
     now += 1000 / 60;
-    const pending = queue; queue = [];
+    const pending = queue;
+    queue = [];
     for (const callback of pending) callback(now);
   }
 }
@@ -26,7 +34,7 @@ describe('createSpring', () => {
   it('settles exactly on its target and calls onRest once', () => {
     const values: number[] = [];
     const onRest = vi.fn();
-    const spring = createSpring(0, (value) => values.push(value), { response: .3, onRest });
+    const spring = createSpring(0, (value) => values.push(value), { response: 0.3, onRest });
     spring.to(100);
     frames(600);
     expect(spring.moving).toBe(false);
@@ -39,18 +47,24 @@ describe('createSpring', () => {
   it('does not overshoot when critically damped, and overshoots when underdamped', () => {
     const peak = (dampingRatio: number) => {
       let max = 0;
-      const spring = createSpring(0, (value) => { max = Math.max(max, value); }, { response: .3, dampingRatio });
+      const spring = createSpring(
+        0,
+        (value) => {
+          max = Math.max(max, value);
+        },
+        { response: 0.3, dampingRatio },
+      );
       spring.to(100);
       frames(600);
       return max;
     };
     expect(peak(1)).toBeLessThanOrEqual(100.0001);
-    expect(peak(.6)).toBeGreaterThan(105);
-    expect(peak(.6)).toBeGreaterThan(peak(.8));
+    expect(peak(0.6)).toBeGreaterThan(105);
+    expect(peak(0.6)).toBeGreaterThan(peak(0.8));
   });
 
   it('keeps its velocity when retargeted mid-flight', () => {
-    const spring = createSpring(0, () => {}, { response: .4 });
+    const spring = createSpring(0, () => {}, { response: 0.4 });
     spring.to(100);
     frames(6);
     const before = spring.value;
@@ -60,13 +74,13 @@ describe('createSpring', () => {
     spring.to(-100);
     frames(1);
     // Still moving forward for a moment: the reversal decelerates rather than jumping.
-    expect(spring.value).toBeGreaterThan(before + speed * .3);
+    expect(spring.value).toBeGreaterThan(before + speed * 0.3);
     frames(600);
     expect(spring.value).toBe(-100);
   });
 
   it('uses a release velocity', () => {
-    const spring = createSpring(0, () => {}, { response: .4 });
+    const spring = createSpring(0, () => {}, { response: 0.4 });
     spring.to(0, 2000);
     frames(3);
     expect(spring.value).toBeGreaterThan(10);

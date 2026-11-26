@@ -55,14 +55,17 @@ export interface AnchoredPopover {
 
 let popoverSequence = 0;
 const reducedMotion = (): boolean => matchMedia('(prefers-reduced-motion: reduce)').matches;
-const focusable = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const focusable =
+  'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * A popover anchored to a trigger, with a pointer that stays aligned to the trigger when the popover shifts away
  * from an edge or flips to the other side. It closes on Escape, an outside press, or a selection inside it.
  */
 export function createAnchoredPopover(
-  trigger: HTMLElement, content: Node | readonly Node[], options: AnchoredPopoverOptions = {},
+  trigger: HTMLElement,
+  content: Node | readonly Node[],
+  options: AnchoredPopoverOptions = {},
 ): AnchoredPopover {
   const listeners = new AbortController();
   const { signal } = listeners;
@@ -139,9 +142,14 @@ export function createAnchoredPopover(
     element.style.setProperty('--_lg-popover-room', `${Math.max(120, bounds.width - 2 * margin)}px`);
     const width = element.offsetWidth;
     const height = element.offsetHeight;
-    let side: 'above' | 'below' = options.placement === 'below' ? 'below'
-      : options.placement === 'above' ? 'above'
-      : triggerBox.top + triggerBox.height / 2 > bounds.top + bounds.height / 2 ? 'above' : 'below';
+    let side: 'above' | 'below' =
+      options.placement === 'below'
+        ? 'below'
+        : options.placement === 'above'
+          ? 'above'
+          : triggerBox.top + triggerBox.height / 2 > bounds.top + bounds.height / 2
+            ? 'above'
+            : 'below';
     if (side === 'above' && roomAbove < height + gap && roomBelow > roomAbove) side = 'below';
     else if (side === 'below' && roomBelow < height + gap && roomAbove > roomBelow) side = 'above';
     const centre = triggerBox.left + triggerBox.width / 2;
@@ -163,7 +171,11 @@ export function createAnchoredPopover(
   }
 
   function schedule(): void {
-    if (!frame) frame = requestAnimationFrame(() => { frame = 0; position(); });
+    if (!frame)
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        position();
+      });
   }
 
   // One spring from 0 (closed) to 1 (open) drives the fade, the rise and the scale, so a popover closed while
@@ -177,18 +189,24 @@ export function createAnchoredPopover(
       const from = openness?.value ?? 0;
       openness?.stop();
       bouncy = bounce;
-      openness = createSpring(from, (value) => {
-        const shift = element.dataset.side === 'below' ? -6 : 6;
-        element.style.opacity = String(Math.max(0, Math.min(1, value)));
-        element.style.transform = `translateY(${(shift * (1 - value)).toFixed(2)}px) scale(${(.9 + .1 * value).toFixed(4)})`;
-      }, {
-        response: bounce ? .34 : .26, dampingRatio: bounce ? .72 : 1, precision: .002,
-        onRest: (value) => {
-          if (value < .5) return finishClosing();
-          element.style.removeProperty('opacity');
-          element.style.removeProperty('transform');
+      openness = createSpring(
+        from,
+        (value) => {
+          const shift = element.dataset.side === 'below' ? -6 : 6;
+          element.style.opacity = String(Math.max(0, Math.min(1, value)));
+          element.style.transform = `translateY(${(shift * (1 - value)).toFixed(2)}px) scale(${(0.9 + 0.1 * value).toFixed(4)})`;
         },
-      });
+        {
+          response: bounce ? 0.34 : 0.26,
+          dampingRatio: bounce ? 0.72 : 1,
+          precision: 0.002,
+          onRest: (value) => {
+            if (value < 0.5) return finishClosing();
+            element.style.removeProperty('opacity');
+            element.style.removeProperty('transform');
+          },
+        },
+      );
     }
     element.hidden = false;
     // A closing popover no longer takes clicks or taps.
@@ -251,41 +269,81 @@ export function createAnchoredPopover(
   // An outside press closes the popover. Unless it closes on scroll, a press only counts once it ends as a tap:
   // a finger that moves, or that the browser takes over to scroll the page, leaves it open.
   let outsidePress: { id: number; x: number; y: number } | undefined;
-  document.addEventListener('pointerdown', (event) => {
-    if (!open || !(event.target instanceof Node)) return;
-    if (element.contains(event.target) || trigger.contains(event.target)) return;
-    if (options.closeOnScroll || event.pointerType === 'mouse') hide({ reason: 'outside' });
-    else outsidePress = { id: event.pointerId, x: event.clientX, y: event.clientY };
-  }, { capture: true, signal });
-  document.addEventListener('pointermove', (event) => {
-    if (outsidePress?.id === event.pointerId && Math.hypot(event.clientX - outsidePress.x, event.clientY - outsidePress.y) > 10) outsidePress = undefined;
-  }, { capture: true, passive: true, signal });
-  document.addEventListener('pointercancel', () => { outsidePress = undefined; }, { capture: true, signal });
-  document.addEventListener('pointerup', (event) => {
-    if (outsidePress?.id !== event.pointerId) return;
-    outsidePress = undefined;
-    if (open) hide({ reason: 'outside' });
-  }, { capture: true, signal });
-  addEventListener('scroll', (event) => {
-    if (outsidePress) outsidePress = undefined;
-    // Scrolling inside the popover itself never closes it.
-    if (options.closeOnScroll && open && !(event.target instanceof Node && element.contains(event.target))) hide({ reason: 'scroll' });
-  }, { passive: true, capture: true, signal });
-  document.addEventListener('keydown', (event) => {
-    if (!open || event.key !== 'Escape') return;
-    const inside = element.contains(document.activeElement) || trigger === document.activeElement;
-    hide({ reason: 'escape', restoreFocus: inside });
-  }, { signal });
+  document.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (!open || !(event.target instanceof Node)) return;
+      if (element.contains(event.target) || trigger.contains(event.target)) return;
+      if (options.closeOnScroll || event.pointerType === 'mouse') hide({ reason: 'outside' });
+      else outsidePress = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    },
+    { capture: true, signal },
+  );
+  document.addEventListener(
+    'pointermove',
+    (event) => {
+      if (
+        outsidePress?.id === event.pointerId &&
+        Math.hypot(event.clientX - outsidePress.x, event.clientY - outsidePress.y) > 10
+      )
+        outsidePress = undefined;
+    },
+    { capture: true, passive: true, signal },
+  );
+  document.addEventListener(
+    'pointercancel',
+    () => {
+      outsidePress = undefined;
+    },
+    { capture: true, signal },
+  );
+  document.addEventListener(
+    'pointerup',
+    (event) => {
+      if (outsidePress?.id !== event.pointerId) return;
+      outsidePress = undefined;
+      if (open) hide({ reason: 'outside' });
+    },
+    { capture: true, signal },
+  );
+  addEventListener(
+    'scroll',
+    (event) => {
+      if (outsidePress) outsidePress = undefined;
+      // Scrolling inside the popover itself never closes it.
+      if (options.closeOnScroll && open && !(event.target instanceof Node && element.contains(event.target)))
+        hide({ reason: 'scroll' });
+    },
+    { passive: true, capture: true, signal },
+  );
+  document.addEventListener(
+    'keydown',
+    (event) => {
+      if (!open || event.key !== 'Escape') return;
+      const inside = element.contains(document.activeElement) || trigger === document.activeElement;
+      hide({ reason: 'escape', restoreFocus: inside });
+    },
+    { signal },
+  );
   // Keyboard focus leaving the popover (Tab past the last item) closes it without stealing focus back.
-  element.addEventListener('focusout', (event) => {
-    const next = event.relatedTarget;
-    if (open && next instanceof Node && !element.contains(next) && !trigger.contains(next)) hide({ reason: 'outside', restoreFocus: false });
-  }, { signal });
-  element.addEventListener('click', (event) => {
-    if (options.closeOnSelect === false || !(event.target instanceof Element)) return;
-    const control = event.target.closest('button, a[href]');
-    if (control && element.contains(control)) hide({ reason: 'selection', restoreFocus: event.detail === 0 });
-  }, { signal });
+  element.addEventListener(
+    'focusout',
+    (event) => {
+      const next = event.relatedTarget;
+      if (open && next instanceof Node && !element.contains(next) && !trigger.contains(next))
+        hide({ reason: 'outside', restoreFocus: false });
+    },
+    { signal },
+  );
+  element.addEventListener(
+    'click',
+    (event) => {
+      if (options.closeOnSelect === false || !(event.target instanceof Element)) return;
+      const control = event.target.closest('button, a[href]');
+      if (control && element.contains(control)) hide({ reason: 'selection', restoreFocus: event.detail === 0 });
+    },
+    { signal },
+  );
   addEventListener('resize', schedule, { passive: true, signal });
   addEventListener('scroll', schedule, { passive: true, capture: true, signal });
   const observer = new ResizeObserver(schedule);
@@ -296,7 +354,9 @@ export function createAnchoredPopover(
     element,
     body,
     trigger,
-    get open() { return open; },
+    get open() {
+      return open;
+    },
     show,
     hide,
     toggle,
@@ -308,7 +368,11 @@ export function createAnchoredPopover(
       cancelAnimationFrame(frame);
       openness?.stop();
       element.remove();
-      for (const [name, value] of [['aria-controls', original.controls], ['aria-expanded', original.expanded], ['aria-haspopup', original.popup]] as const) {
+      for (const [name, value] of [
+        ['aria-controls', original.controls],
+        ['aria-expanded', original.expanded],
+        ['aria-haspopup', original.popup],
+      ] as const) {
         if (value === null) trigger.removeAttribute(name);
         else trigger.setAttribute(name, value);
       }

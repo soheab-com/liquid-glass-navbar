@@ -1,7 +1,8 @@
 // Builds dist/: one ESM bundle for the browser, per-module declarations from tsc, and the stylesheet.
-import { build } from 'esbuild';
+
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, rmSync } from 'node:fs';
+import { build } from 'esbuild';
 
 rmSync('dist', { recursive: true, force: true });
 await build({

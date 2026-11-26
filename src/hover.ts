@@ -19,10 +19,13 @@ type HoverBar = { itemAt: (target: Element | null) => NavbarItem | undefined; en
 const groups = new Map<string, Set<HoverBar>>();
 
 export function bindHoverNavigation(
-  nav: HTMLElement, options: NavbarHoverOptions, itemAt: (element: Element | null) => NavbarItem | undefined,
-  enabled: () => boolean, signal: AbortSignal,
+  nav: HTMLElement,
+  options: NavbarHoverOptions,
+  itemAt: (element: Element | null) => NavbarItem | undefined,
+  enabled: () => boolean,
+  signal: AbortSignal,
 ): () => void {
-  const group = options.group ? groups.get(options.group) ?? new Set<HoverBar>() : undefined;
+  const group = options.group ? (groups.get(options.group) ?? new Set<HoverBar>()) : undefined;
   const bar = { itemAt, enabled };
   if (group && options.group) {
     if (options.swipe !== false) nav.classList.add('lg-navbar--hover-group');
@@ -74,16 +77,31 @@ export function bindHoverNavigation(
     if (!(next instanceof HTMLAnchorElement)) return;
     const destination = new URL(next.href);
     const current = new URL(location.href);
-    if (!destination.hash || destination.origin !== current.origin
-      || destination.pathname !== current.pathname || destination.search !== current.search) return;
+    if (
+      !destination.hash ||
+      destination.origin !== current.origin ||
+      destination.pathname !== current.pathname ||
+      destination.search !== current.search
+    )
+      return;
     let id: string;
-    try { id = decodeURIComponent(destination.hash.slice(1)); } catch { return; }
+    try {
+      id = decodeURIComponent(destination.hash.slice(1));
+    } catch {
+      return;
+    }
     const target = document.getElementById(id);
     if (!target) return;
     origin ??= [{ scroller: window, x: scrollX, y: scrollY }];
-    for (let parent = target.parentElement; parent && parent !== document.scrollingElement; parent = parent.parentElement) {
-      if (!origin.some(({ scroller }) => scroller === parent)
-        && (parent.scrollHeight > parent.clientHeight || parent.scrollWidth > parent.clientWidth)) {
+    for (
+      let parent = target.parentElement;
+      parent && parent !== document.scrollingElement;
+      parent = parent.parentElement
+    ) {
+      if (
+        !origin.some(({ scroller }) => scroller === parent) &&
+        (parent.scrollHeight > parent.clientHeight || parent.scrollWidth > parent.clientWidth)
+      ) {
         origin.push({ scroller: parent, x: parent.scrollLeft, y: parent.scrollTop });
       }
     }
@@ -103,7 +121,9 @@ export function bindHoverNavigation(
     clearTimeout(pending);
     item = next;
     const delay = Number.isFinite(options.delay) ? Math.max(0, options.delay ?? 0) : 0;
-    const dwell = () => { if (enabled() && hit(document.elementFromPoint(x, y), dragging) === next) preview(next, dragging); };
+    const dwell = () => {
+      if (enabled() && hit(document.elementFromPoint(x, y), dragging) === next) preview(next, dragging);
+    };
     if (delay) pending = setTimeout(dwell, delay);
     else dwell();
   }
@@ -113,74 +133,131 @@ export function bindHoverNavigation(
   };
   nav.addEventListener('pointerover', hover, { signal });
   nav.addEventListener('pointermove', hover, { signal });
-  nav.addEventListener('pointerleave', () => { if (!start && !finger) end(true); }, { signal });
-  nav.addEventListener('pointerdown', (event) => {
-    end(false);
-    if (options.swipe !== false && event.pointerType === 'touch' && event.isPrimary) touchPointer = event.pointerId;
-    if (options.swipe !== false && event.pointerType !== 'touch' && event.isPrimary && event.button === 0 && event.target instanceof Element && itemAt(event.target)) {
-      start = { id: event.pointerId, x: event.clientX, y: event.clientY };
-    }
-  }, { signal });
-  window.addEventListener('pointermove', (event) => {
-    if (start?.id === event.pointerId && Math.hypot(start.x - event.clientX, start.y - event.clientY) >= 8) track(event, true);
-  }, { signal, passive: true });
-  window.addEventListener('pointerup', (event) => {
-    if (start?.id !== event.pointerId && !(finger && touchPointer === event.pointerId)) return;
-    const point = document.elementFromPoint(event.clientX, event.clientY);
-    const own = itemAt(point);
-    const target = enabled() ? hit(point, true) : undefined;
-    const initial = start ?? finger;
-    start = undefined;
-    if (target && !own && initial && Math.hypot(event.clientX - initial.x, event.clientY - initial.y) >= 8) {
+  nav.addEventListener(
+    'pointerleave',
+    () => {
+      if (!start && !finger) end(true);
+    },
+    { signal },
+  );
+  nav.addEventListener(
+    'pointerdown',
+    (event) => {
+      end(false);
+      if (options.swipe !== false && event.pointerType === 'touch' && event.isPrimary) touchPointer = event.pointerId;
+      if (
+        options.swipe !== false &&
+        event.pointerType !== 'touch' &&
+        event.isPrimary &&
+        event.button === 0 &&
+        event.target instanceof Element &&
+        itemAt(event.target)
+      ) {
+        start = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      }
+    },
+    { signal },
+  );
+  window.addEventListener(
+    'pointermove',
+    (event) => {
+      if (start?.id === event.pointerId && Math.hypot(start.x - event.clientX, start.y - event.clientY) >= 8)
+        track(event, true);
+    },
+    { signal, passive: true },
+  );
+  window.addEventListener(
+    'pointerup',
+    (event) => {
+      if (start?.id !== event.pointerId && !(finger && touchPointer === event.pointerId)) return;
+      const point = document.elementFromPoint(event.clientX, event.clientY);
+      const own = itemAt(point);
+      const target = enabled() ? hit(point, true) : undefined;
+      const initial = start ?? finger;
+      start = undefined;
+      if (target && !own && initial && Math.hypot(event.clientX - initial.x, event.clientY - initial.y) >= 8) {
+        finger = undefined;
+        end(false);
+        event.stopImmediatePropagation();
+        window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: event.pointerId }));
+        target.click();
+      } else if (event.pointerType !== 'touch') {
+        end(!own);
+      }
+    },
+    { capture: true, signal },
+  );
+  window.addEventListener(
+    'pointercancel',
+    (event) => {
+      if (start?.id !== event.pointerId) return;
+      start = undefined;
+      end(true);
+    },
+    { signal },
+  );
+  nav.addEventListener(
+    'touchstart',
+    (event) => {
+      if (
+        options.swipe === false ||
+        !enabled() ||
+        event.touches.length !== 1 ||
+        !(event.target instanceof Element) ||
+        !itemAt(event.target)
+      )
+        return;
+      const touch = event.touches[0]!;
+      finger = { id: touch.identifier, x: touch.clientX, y: touch.clientY };
+    },
+    { signal, passive: true },
+  );
+  nav.addEventListener(
+    'touchmove',
+    (event) => {
+      const touch = event.touches.length === 1 ? event.touches[0] : undefined;
+      if (
+        finger &&
+        touch?.identifier === finger.id &&
+        Math.hypot(touch.clientX - finger.x, touch.clientY - finger.y) >= 8
+      )
+        track(touch, true);
+    },
+    { signal, passive: true },
+  );
+  nav.addEventListener(
+    'touchend',
+    (event) => {
+      if (!finger) return;
+      const touch = [...event.changedTouches].find((entry) => entry.identifier === finger?.id);
+      if (!touch) return;
+      const startTouch = finger;
       finger = undefined;
-      end(false);
-      event.stopImmediatePropagation();
-      window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: event.pointerId }));
-      target.click();
-    } else if (event.pointerType !== 'touch') {
-      end(!own);
-    }
-  }, { capture: true, signal });
-  window.addEventListener('pointercancel', (event) => {
-    if (start?.id !== event.pointerId) return;
-    start = undefined;
-    end(true);
-  }, { signal });
-  nav.addEventListener('touchstart', (event) => {
-    if (options.swipe === false || !enabled() || event.touches.length !== 1
-      || !(event.target instanceof Element) || !itemAt(event.target)) return;
-    const touch = event.touches[0]!;
-    finger = { id: touch.identifier, x: touch.clientX, y: touch.clientY };
-  }, { signal, passive: true });
-  nav.addEventListener('touchmove', (event) => {
-    const touch = event.touches.length === 1 ? event.touches[0] : undefined;
-    if (finger && touch?.identifier === finger.id
-      && Math.hypot(touch.clientX - finger.x, touch.clientY - finger.y) >= 8) track(touch, true);
-  }, { signal, passive: true });
-  nav.addEventListener('touchend', (event) => {
-    if (!finger) return;
-    const touch = [...event.changedTouches].find((entry) => entry.identifier === finger?.id);
-    if (!touch) return;
-    const startTouch = finger;
-    finger = undefined;
-    const point = document.elementFromPoint(touch.clientX, touch.clientY);
-    const own = itemAt(point);
-    const target = enabled() ? hit(point, true) : undefined;
-    if (target && !own && Math.hypot(touch.clientX - startTouch.x, touch.clientY - startTouch.y) >= 8) {
-      end(false);
-      if (touchPointer !== undefined) window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: touchPointer }));
-      if (event.cancelable) event.preventDefault();
-      target.click();
-    } else {
-      end(!own);
-    }
-    touchPointer = undefined;
-  }, { signal });
-  nav.addEventListener('touchcancel', () => {
-    if (!finger) return;
-    finger = undefined;
-    end(true);
-  }, { signal });
+      const point = document.elementFromPoint(touch.clientX, touch.clientY);
+      const own = itemAt(point);
+      const target = enabled() ? hit(point, true) : undefined;
+      if (target && !own && Math.hypot(touch.clientX - startTouch.x, touch.clientY - startTouch.y) >= 8) {
+        end(false);
+        if (touchPointer !== undefined)
+          window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: touchPointer }));
+        if (event.cancelable) event.preventDefault();
+        target.click();
+      } else {
+        end(!own);
+      }
+      touchPointer = undefined;
+    },
+    { signal },
+  );
+  nav.addEventListener(
+    'touchcancel',
+    () => {
+      if (!finger) return;
+      finger = undefined;
+      end(true);
+    },
+    { signal },
+  );
   window.addEventListener('wheel', () => end(false), { signal, passive: true });
   nav.addEventListener('click', () => end(false), { signal, capture: true });
   return () => {

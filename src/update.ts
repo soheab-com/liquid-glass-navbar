@@ -23,7 +23,10 @@ export function findKeyedMatch<T extends HTMLElement>(
 ): T | undefined {
   const same = [...nodes].filter((node) => node.tagName === incoming.tagName);
   const identity = identify(incoming);
-  return same.find((node) => node === incoming) ?? (identity === undefined
-    ? same.find((node) => identify(node) === undefined && authored(node, incoming))
-    : same.find((node) => identify(node) === identity));
+  return (
+    same.find((node) => node === incoming) ??
+    (identity === undefined
+      ? same.find((node) => identify(node) === undefined && authored(node, incoming))
+      : same.find((node) => identify(node) === identity))
+  );
 }

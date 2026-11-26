@@ -1,4 +1,10 @@
-import { mountLiquidGlassNavbar, type LiquidGlassNavbar, type NavbarPosition, type EqualWidthOverflow, type NavbarColors } from '../src/index.js';
+import {
+  type EqualWidthOverflow,
+  type LiquidGlassNavbar,
+  mountLiquidGlassNavbar,
+  type NavbarColors,
+  type NavbarPosition,
+} from '../src/index.js';
 
 interface ExampleItem {
   name: string;
@@ -42,7 +48,9 @@ position.value = positions.find((edge) => edge === requestedPosition) ?? 'bottom
 groups.checked = parameters.get('groups') !== 'off';
 labels.checked = parameters.get('labels') !== 'off';
 equal.checked = parameters.has('equal');
-equalOverflow.value = ['truncate', 'grow'].includes(parameters.get('equal') ?? '') ? parameters.get('equal')! : 'natural';
+equalOverflow.value = ['truncate', 'grow'].includes(parameters.get('equal') ?? '')
+  ? parameters.get('equal')!
+  : 'natural';
 mapIcon.checked = parameters.get('mapIcon') !== 'off';
 mapLabel.checked = parameters.get('mapLabel') !== 'off';
 reorderMode.checked = parameters.has('reorder');

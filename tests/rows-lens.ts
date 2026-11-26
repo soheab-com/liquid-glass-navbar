@@ -13,12 +13,16 @@ bar.sync();
 bar.sync();
 const beforePaint = parseFloat(lens().style.top);
 
-requestAnimationFrame(() => requestAnimationFrame(() => {
-  const origin = nav.getBoundingClientRect().top + nav.clientTop;
-  const section = selected.parentElement!;
-  const expected = section.getBoundingClientRect().top + selected.offsetTop - origin;
-  const actual = parseFloat(lens().style.top);
-  const initialLayoutAligned = Math.abs(beforePaint - expected) < 1 && Math.abs(actual - expected) < 1;
-  result.value = initialLayoutAligned ? 'PASS' : `FAIL: lens top ${beforePaint} before paint, ${actual} after paint, expected ${expected}`;
-  result.dataset.passed = String(initialLayoutAligned);
-}));
+requestAnimationFrame(() =>
+  requestAnimationFrame(() => {
+    const origin = nav.getBoundingClientRect().top + nav.clientTop;
+    const section = selected.parentElement!;
+    const expected = section.getBoundingClientRect().top + selected.offsetTop - origin;
+    const actual = parseFloat(lens().style.top);
+    const initialLayoutAligned = Math.abs(beforePaint - expected) < 1 && Math.abs(actual - expected) < 1;
+    result.value = initialLayoutAligned
+      ? 'PASS'
+      : `FAIL: lens top ${beforePaint} before paint, ${actual} after paint, expected ${expected}`;
+    result.dataset.passed = String(initialLayoutAligned);
+  }),
+);

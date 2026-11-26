@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { calls, mount, tab } from './helpers';
 
-const rows = `<div data-navbar-section data-navbar-row="1">${tab('Filter A')}${tab('Filter B')}</div>`
-  + `<div data-navbar-section data-navbar-row="2">${tab('Home', 'aria-current="page"')}${tab('Search')}</div>`;
+const rows =
+  `<div data-navbar-section data-navbar-row="1">${tab('Filter A')}${tab('Filter B')}</div>` +
+  `<div data-navbar-section data-navbar-row="2">${tab('Home', 'aria-current="page"')}${tab('Search')}</div>`;
 type Bar = { setCollapsed(value: boolean): void; collapsed: boolean };
 
 test('collapse and expand with the chevron, setCollapsed and callbacks', async ({ page }) => {
@@ -26,7 +27,10 @@ test('collapse and expand with the chevron, setCollapsed and callbacks', async (
   expect(await page.evaluate(() => (window as unknown as { bar: Bar }).bar.collapsed)).toBe(false);
   await expect(filter).toBeVisible();
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  expect(await calls(page, 'collapse')).toEqual([['collapse', true], ['collapse', false]]);
+  expect(await calls(page, 'collapse')).toEqual([
+    ['collapse', true],
+    ['collapse', false],
+  ]);
 });
 
 test('the toggle exposes only its current label', async ({ page }) => {

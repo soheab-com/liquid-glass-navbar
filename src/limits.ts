@@ -3,11 +3,14 @@ import type { NavbarVisibleLimit } from './types.js';
 
 /** Resolves a number, breakpoint map or function to a count. Missing or invalid limits mean no limit. */
 export function resolveVisibleLimit(limit: NavbarVisibleLimit | undefined, width: number): number {
-  const value = typeof limit === 'function' ? limit(width)
-    : typeof limit === 'object' ? Object.entries(limit)
-      .filter(([breakpoint]) => Number(breakpoint) <= width)
-      .sort(([a], [b]) => Number(b) - Number(a))[0]?.[1]
-    : limit;
+  const value =
+    typeof limit === 'function'
+      ? limit(width)
+      : typeof limit === 'object'
+        ? Object.entries(limit)
+            .filter(([breakpoint]) => Number(breakpoint) <= width)
+            .sort(([a], [b]) => Number(b) - Number(a))[0]?.[1]
+        : limit;
   return value === undefined || Number.isNaN(value) ? Infinity : Math.max(0, Math.floor(value));
 }
 

@@ -6,7 +6,9 @@ test('each engine gets refraction over a marked backdrop', async ({ page, browse
   await page.waitForFunction(() => document.documentElement.dataset.ready === 'true');
   const glass = page.locator('#nav');
   if (browserName === 'chromium') {
-    await expect.poll(() => glass.evaluate((nav) => getComputedStyle(nav, '::before').backdropFilter)).toContain('url(');
+    await expect
+      .poll(() => glass.evaluate((nav) => getComputedStyle(nav, '::before').backdropFilter))
+      .toContain('url(');
   } else {
     const lens = page.locator('#nav .lg-navbar__refraction-copy .lg-navbar__refraction-lens');
     await expect(lens).toHaveCount(1);

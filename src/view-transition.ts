@@ -1,8 +1,17 @@
 // Keeps a named navbar live during same-document View Transitions.
 export function mountViewTransition(nav: HTMLElement, name: string | undefined): (() => void) | undefined {
-  if (!name || name === 'none' || name === 'auto' || name === 'match-element' || !CSS.supports('view-transition-name', name)) return;
+  if (
+    !name ||
+    name === 'none' ||
+    name === 'auto' ||
+    name === 'match-element' ||
+    !CSS.supports('view-transition-name', name)
+  )
+    return;
   const properties = ['view-transition-name', 'view-transition-class'];
-  const previous = properties.map((property) => [nav.style.getPropertyValue(property), nav.style.getPropertyPriority(property)] as const);
+  const previous = properties.map(
+    (property) => [nav.style.getPropertyValue(property), nav.style.getPropertyPriority(property)] as const,
+  );
   nav.style.setProperty('view-transition-name', name);
   nav.style.setProperty('view-transition-class', 'lg-navbar-live');
   // Name-based rules apply everywhere; some engines parse class selectors without matching them.

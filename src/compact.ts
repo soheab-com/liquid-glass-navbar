@@ -12,7 +12,8 @@ export interface ScrollCompactOptions {
  * Reversals shorter than the threshold and rubber-band overscroll past either end are ignored.
  */
 export function watchScrollDirection(options: ScrollCompactOptions, onChange: (compact: boolean) => void): () => void {
-  const resolve = typeof options.source === 'function' ? options.source : () => options.source as ScrollSource | undefined;
+  const resolve =
+    typeof options.source === 'function' ? options.source : () => options.source as ScrollSource | undefined;
   const source = resolve() ?? window;
   const threshold = Math.max(1, options.threshold ?? 16);
   const listeners = new AbortController();
@@ -26,24 +27,28 @@ export function watchScrollDirection(options: ScrollCompactOptions, onChange: (c
   let compact = false;
   let turn = read();
   let frame = 0;
-  source.addEventListener('scroll', () => {
-    if (frame) return;
-    frame = requestAnimationFrame(() => {
-      frame = 0;
-      const top = read();
-      if (!compact) {
-        turn = Math.min(turn, top);
-        if (top - turn < threshold) return;
-        compact = true;
-      } else {
-        turn = Math.max(turn, top);
-        if (turn - top < threshold && top > 0) return;
-        compact = false;
-      }
-      turn = top;
-      onChange(compact);
-    });
-  }, { passive: true, signal: listeners.signal });
+  source.addEventListener(
+    'scroll',
+    () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const top = read();
+        if (!compact) {
+          turn = Math.min(turn, top);
+          if (top - turn < threshold) return;
+          compact = true;
+        } else {
+          turn = Math.max(turn, top);
+          if (turn - top < threshold && top > 0) return;
+          compact = false;
+        }
+        turn = top;
+        onChange(compact);
+      });
+    },
+    { passive: true, signal: listeners.signal },
+  );
   return () => {
     listeners.abort();
     cancelAnimationFrame(frame);

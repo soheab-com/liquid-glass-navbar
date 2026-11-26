@@ -21,7 +21,8 @@ describe('rimShape', () => {
 describe('rimPixels', () => {
   for (const clear of [true, false]) {
     it(`${clear ? 'clear' : 'tinted'}: neutral centre, symmetric edges, opaque`, () => {
-      const width = 120, height = 44;
+      const width = 120,
+        height = 44;
       const data = rimPixels(width, height, 22, clear);
       expect(data).toHaveLength(width * height * 4);
       // The flat middle of the pill doesn't move the backdrop.

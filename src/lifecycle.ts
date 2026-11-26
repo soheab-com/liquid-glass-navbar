@@ -20,25 +20,38 @@ export function createDisposer(signal: AbortSignal): Disposer {
     for (const id of frames) cancelAnimationFrame(id);
     frames.clear();
     for (const teardown of teardowns.splice(0).reverse()) {
-      try { teardown(); } catch (error) { queueMicrotask(() => { throw error; }); }
+      try {
+        teardown();
+      } catch (error) {
+        queueMicrotask(() => {
+          throw error;
+        });
+      }
     }
   };
   if (!disposed) signal.addEventListener('abort', run, { once: true });
   return {
     add(teardown) {
-      if (disposed) teardown(); else teardowns.push(teardown);
+      if (disposed) teardown();
+      else teardowns.push(teardown);
       return teardown;
     },
     frame(callback) {
       if (disposed) return 0;
-      const id = requestAnimationFrame((time) => { frames.delete(id); callback(time); });
+      const id = requestAnimationFrame((time) => {
+        frames.delete(id);
+        callback(time);
+      });
       frames.add(id);
       return id;
     },
     observe(observer) {
-      if (disposed) observer.disconnect(); else teardowns.push(() => observer.disconnect());
+      if (disposed) observer.disconnect();
+      else teardowns.push(() => observer.disconnect());
       return observer;
     },
-    get disposed() { return disposed; },
+    get disposed() {
+      return disposed;
+    },
   };
 }

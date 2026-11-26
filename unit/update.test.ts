@@ -31,8 +31,12 @@ describe('findKeyedMatch', () => {
   it('matches by key within the same tag only', () => {
     const button = html('<button data-navbar-key="a">Old</button>');
     const anchor = html('<a data-navbar-key="a" href="/a">Old</a>');
-    expect(findKeyedMatch([anchor, button], html('<button data-navbar-key="a">New</button>'), identify, sameMarkup)).toBe(button);
-    expect(findKeyedMatch([button], html('<button data-navbar-key="b"></button>'), identify, sameMarkup)).toBeUndefined();
+    expect(
+      findKeyedMatch([anchor, button], html('<button data-navbar-key="a">New</button>'), identify, sameMarkup),
+    ).toBe(button);
+    expect(
+      findKeyedMatch([button], html('<button data-navbar-key="b"></button>'), identify, sameMarkup),
+    ).toBeUndefined();
   });
   it('matches unkeyed nodes by authored markup, never a keyed one', () => {
     const keyed = html('<button data-navbar-key="x">Same</button>');

@@ -25,7 +25,13 @@ test('dragging past the first tab rubber-bands, then springs back', async ({ pag
   const first = (await page.locator('[data-navbar-key="one"]').boundingBox())!;
   const nav = (await page.locator('#nav').boundingBox())!;
   const resting = await lensCenter(page);
-  await drag(page, '[data-navbar-key="two"]', { x: Math.max(1, nav.x - 200), y: first.y + first.height / 2 }, 20, false);
+  await drag(
+    page,
+    '[data-navbar-key="two"]',
+    { x: Math.max(1, nav.x - 200), y: first.y + first.height / 2 },
+    20,
+    false,
+  );
   const stretched = await lensCenter(page);
   // Past the edge, but by far less than the 200px the pointer travelled beyond the bar.
   expect(stretched).toBeLessThan(resting - 1);

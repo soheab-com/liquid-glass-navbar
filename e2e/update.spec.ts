@@ -14,8 +14,9 @@ test('update() keeps keyed nodes and their listeners', async ({ page }) => {
       <button data-navbar-key="four"><span data-navbar-label>Four</span></button>`;
     (window as unknown as { bar: Bar }).bar.update(next);
   });
-  const sameNode = await page.evaluate(() =>
-    document.querySelector('[data-navbar-key="two"]') === (window as unknown as { kept: Element }).kept);
+  const sameNode = await page.evaluate(
+    () => document.querySelector('[data-navbar-key="two"]') === (window as unknown as { kept: Element }).kept,
+  );
   expect(sameNode).toBe(true);
   await expect(current(page)).toHaveText('Second');
   await expect(page.locator('[data-navbar-key="one"]')).toHaveCount(0, { timeout: 5000 });
@@ -32,7 +33,9 @@ test('update() with animate: false is immediate', async ({ page }) => {
     const lens = document.querySelector('#nav .lg-navbar__lens')!.getBoundingClientRect();
     const five = document.querySelector('[data-navbar-key="five"]')!.getBoundingClientRect();
     return {
-      keys: [...document.querySelectorAll('#nav [data-navbar-key]')].map((item) => item.getAttribute('data-navbar-key')),
+      keys: [...document.querySelectorAll('#nav [data-navbar-key]')].map((item) =>
+        item.getAttribute('data-navbar-key'),
+      ),
       offset: Math.abs(lens.left + lens.width / 2 - (five.left + five.width / 2)),
       animations: document.getAnimations().length,
     };

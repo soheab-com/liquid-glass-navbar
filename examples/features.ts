@@ -1,4 +1,4 @@
-import { mountLiquidGlassNavbar, type LiquidGlassNavbar, type LiquidGlassNavbarOptions } from '../src/index.js';
+import { type LiquidGlassNavbar, type LiquidGlassNavbarOptions, mountLiquidGlassNavbar } from '../src/index.js';
 
 const icon = 'M4 12h16M12 4v16';
 const status = document.querySelector<HTMLOutputElement>('#status')!;
@@ -15,14 +15,23 @@ function button(label: string, extra: Record<string, string> = {}): HTMLButtonEl
 }
 
 export const bars: Record<string, LiquidGlassNavbar> = {};
-function mount(id: string, labels: string[], options: LiquidGlassNavbarOptions, build?: (nav: HTMLElement) => void): LiquidGlassNavbar {
+function mount(
+  id: string,
+  labels: string[],
+  options: LiquidGlassNavbarOptions,
+  build?: (nav: HTMLElement) => void,
+): LiquidGlassNavbar {
   const nav = document.querySelector<HTMLElement>(`#${id} nav`)!;
   if (build) build(nav);
   else nav.append(...labels.map((label) => button(label)));
   nav.querySelector('button:not([data-navbar-action])')?.setAttribute('aria-current', 'page');
   const bar = mountLiquidGlassNavbar(nav, {
-    onSelect: (item) => { status.value = `${id}: ${item.dataset.id} selected`; },
-    onAction: (item) => { status.value = `${id}: ${item.dataset.id} pressed`; },
+    onSelect: (item) => {
+      status.value = `${id}: ${item.dataset.id} selected`;
+    },
+    onAction: (item) => {
+      status.value = `${id}: ${item.dataset.id} pressed`;
+    },
     ...options,
   });
   bars[id] = bar;
@@ -32,7 +41,11 @@ function mount(id: string, labels: string[], options: LiquidGlassNavbarOptions, 
 mount('wrap', names, { layout: 'wrap', transparency: 60, magnify: true });
 mount('rows', names, { layout: 'rows', transparency: 60 });
 mount('manual', [], { layout: 'rows' }, (nav) => {
-  const groups = [['Create', 'Upload'], ['Alerts', 'Chat'], ['Home', 'Files', 'People', 'Calendar']];
+  const groups = [
+    ['Create', 'Upload'],
+    ['Alerts', 'Chat'],
+    ['Home', 'Files', 'People', 'Calendar'],
+  ];
   groups.forEach((group, index) => {
     const section = document.createElement('div');
     section.setAttribute('data-navbar-section', '');
@@ -55,7 +68,9 @@ const menu = ['New note', 'New checklist', 'New folder'].map((label) => {
   entry.type = 'button';
   entry.textContent = label;
   entry.className = 'menu-entry';
-  entry.addEventListener('click', () => { status.value = `${label} pressed`; });
+  entry.addEventListener('click', () => {
+    status.value = `${label} pressed`;
+  });
   return entry;
 });
 create.createPopover(items[3]!, menu, { label: 'Create' });

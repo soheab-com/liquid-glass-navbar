@@ -3,9 +3,14 @@ import { calls, current, mount, tabs } from './helpers';
 
 const six = tabs('One', 'Two', 'Three', 'Four', 'Five', 'Six');
 const more = '#nav .lg-navbar__more';
-const visibleInBar = (page: import('@playwright/test').Page) => page.locator('#nav > [data-navbar-key]')
-  .evaluateAll((items) => items.filter((item) => (item as HTMLElement).getClientRects().length > 0
-    && !item.closest('.lg-navbar__overflow')).map((item) => item.getAttribute('data-navbar-key')));
+const visibleInBar = (page: import('@playwright/test').Page) =>
+  page
+    .locator('#nav > [data-navbar-key]')
+    .evaluateAll((items) =>
+      items
+        .filter((item) => (item as HTMLElement).getClientRects().length > 0 && !item.closest('.lg-navbar__overflow'))
+        .map((item) => item.getAttribute('data-navbar-key')),
+    );
 
 test('items beyond maxVisible move to More', async ({ page }) => {
   await mount(page, six, { overflow: { maxVisible: 3 } });
@@ -49,7 +54,11 @@ test.describe('touch', () => {
   test('tapping More, then a menu item, selects it', async ({ page }) => {
     await page.goto('/tests/more-tap.html');
     await page.locator('.lg-navbar__more').tap();
-    await page.locator('.lg-popover :is(button, a)', { hasText: 'Settings' }).or(page.getByRole('menuitem', { name: 'Settings' })).first().tap();
+    await page
+      .locator('.lg-popover :is(button, a)', { hasText: 'Settings' })
+      .or(page.getByRole('menuitem', { name: 'Settings' }))
+      .first()
+      .tap();
     await expect(page.locator('#result')).toHaveText('PASS');
   });
 });
@@ -57,9 +66,13 @@ test.describe('touch', () => {
 test('the lens moves to More while its menu is open', async ({ page }) => {
   await mount(page, six, { overflow: { maxVisible: 3 } });
   await page.locator(more).click();
-  await expect.poll(() => page.evaluate(() => {
-    const lens = document.querySelector('#nav .lg-navbar__lens')!.getBoundingClientRect();
-    const trigger = document.querySelector('#nav .lg-navbar__more')!.getBoundingClientRect();
-    return Math.abs(lens.left + lens.width / 2 - (trigger.left + trigger.width / 2));
-  })).toBeLessThan(2);
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const lens = document.querySelector('#nav .lg-navbar__lens')!.getBoundingClientRect();
+        const trigger = document.querySelector('#nav .lg-navbar__more')!.getBoundingClientRect();
+        return Math.abs(lens.left + lens.width / 2 - (trigger.left + trigger.width / 2));
+      }),
+    )
+    .toBeLessThan(2);
 });

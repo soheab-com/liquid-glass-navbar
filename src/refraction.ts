@@ -22,11 +22,11 @@ export function rimShape(radius: number, clear: boolean): RimShape {
   if (clear) {
     // A deep bevel (most of a pill's half-height) whose content is pulled out toward the edge, so the backdrop
     // smears along the outline: roads follow the corners and a bar turns into streaks, like iOS sheets and tab bars.
-    const rim = Math.max(6, Math.min(48, radius * .95));
+    const rim = Math.max(6, Math.min(48, radius * 0.95));
     return { rim, scale: Math.ceil(rim * 1.05), bevel: true };
   }
   // A band about a third of the surface deep bends like a thick lens and mirrors the content; the center stays clear.
-  return { rim: Math.max(6, radius * .7), scale: Math.round(radius * 3), bevel: false };
+  return { rim: Math.max(6, radius * 0.7), scale: Math.round(radius * 3), bevel: false };
 }
 
 /**
@@ -39,8 +39,8 @@ export function rimPixels(width: number, height: number, corner: number, clear: 
   const { rim, scale, bevel } = rimShape(radius, clear);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const dx = x + .5 - width / 2;
-      const dy = y + .5 - height / 2;
+      const dx = x + 0.5 - width / 2;
+      const dy = y + 0.5 - height / 2;
       // Measure from the nearest point on the pill's centerline.
       const nx = Math.sign(dx) * Math.max(0, Math.abs(dx) - (width / 2 - radius));
       const ny = Math.sign(dy) * Math.max(0, Math.abs(dy) - (height / 2 - radius));
@@ -54,9 +54,9 @@ export function rimPixels(width: number, height: number, corner: number, clear: 
       } else {
         const edge = Math.min(1, Math.max(0, (length - radius + rim) / rim));
         // Convex profile: flat inside, steep at the edge, so content folds over near the rim.
-        outward = -(1 - Math.sqrt(1 - edge * edge)) * scale / 2;
+        outward = (-(1 - Math.sqrt(1 - edge * edge)) * scale) / 2;
       }
-      const unit = outward * 255 / scale / (length || 1);
+      const unit = (outward * 255) / scale / (length || 1);
       const index = (y * width + x) * 4;
       data[index] = Math.min(255, Math.max(0, 128 + nx * unit));
       data[index + 1] = Math.min(255, Math.max(0, 128 + ny * unit));
@@ -160,7 +160,12 @@ export function mountRefraction(nav: HTMLElement, mode: RefractionMode, chosen?:
     const id = `lg-navbar-refraction-${++filterSequence}`;
     // WebKit blanks the element with userSpaceOnUse filters, so copy mode works in bounding-box units.
     const units = mode === 'copy' ? 'objectBoundingBox' : 'userSpaceOnUse';
-    const filter = svgElement('filter', { id, filterUnits: units, primitiveUnits: units, 'color-interpolation-filters': 'sRGB' });
+    const filter = svgElement('filter', {
+      id,
+      filterUnits: units,
+      primitiveUnits: units,
+      'color-interpolation-filters': 'sRGB',
+    });
     assets.append(filter);
     observer.observe(target);
     const layer: RefractionLayer = { filter, version: 0, width: 0, height: 0, radius: 0, clear: false };
@@ -208,8 +213,11 @@ export function mountRefraction(nav: HTMLElement, mode: RefractionMode, chosen?:
     // A copy of content that scrolls has to be moved from script, which trails iOS scrolling a little. Elements passed
     // in explicitly are taken as they are; the default lookup only takes scrolling content marked
     // data-navbar-refract="scroll". Fixed backdrops never need moving.
-    return [...found].filter((element) => !nav.contains(element)
-      && (chosen !== undefined || element.getAttribute('data-navbar-refract') === 'scroll' || pinnedToViewport(element)));
+    return [...found].filter(
+      (element) =>
+        !nav.contains(element) &&
+        (chosen !== undefined || element.getAttribute('data-navbar-refract') === 'scroll' || pinnedToViewport(element)),
+    );
   }
 
   const lensOf = (copy: HTMLElement) => copy.firstElementChild as HTMLElement;
@@ -303,7 +311,9 @@ export function mountRefraction(nav: HTMLElement, mode: RefractionMode, chosen?:
       if (width < 8 || height < 8) continue;
 
       // Pills use half their height; multi-row surfaces have smaller rounded corners.
-      const radius = Math.round(Math.min(parseFloat(getComputedStyle(target).borderTopLeftRadius) || Infinity, width / 2, height / 2));
+      const radius = Math.round(
+        Math.min(parseFloat(getComputedStyle(target).borderTopLeftRadius) || Infinity, width / 2, height / 2),
+      );
       if (width !== layer.width || height !== layer.height || radius !== layer.radius || clear !== layer.clear) {
         const map = rimMap(width, height, radius, clear);
         if (!map) continue;
@@ -315,12 +325,23 @@ export function mountRefraction(nav: HTMLElement, mode: RefractionMode, chosen?:
         if (layer.copy) void buildCopyFilter(layer, map, width, height, scale);
         else {
           const pad = Math.ceil(radius * 1.7);
-          for (const [name, value] of Object.entries({ x: -pad, y: -pad, width: width + 2 * pad, height: height + 2 * pad })) {
+          for (const [name, value] of Object.entries({
+            x: -pad,
+            y: -pad,
+            width: width + 2 * pad,
+            height: height + 2 * pad,
+          })) {
             layer.filter.setAttribute(name, String(value));
           }
           layer.filter.replaceChildren(
             svgElement('feImage', { href: map, x: 0, y: 0, width, height, preserveAspectRatio: 'none', result: 'rim' }),
-            svgElement('feDisplacementMap', { in: 'SourceGraphic', in2: 'rim', xChannelSelector: 'R', yChannelSelector: 'G', scale }),
+            svgElement('feDisplacementMap', {
+              in: 'SourceGraphic',
+              in2: 'rim',
+              xChannelSelector: 'R',
+              yChannelSelector: 'G',
+              scale,
+            }),
           );
         }
       }
@@ -333,8 +354,14 @@ export function mountRefraction(nav: HTMLElement, mode: RefractionMode, chosen?:
   }
 
   function hasOwnContent(element: Element): boolean {
-    if (element instanceof HTMLImageElement || element instanceof HTMLVideoElement || element instanceof HTMLCanvasElement
-      || element instanceof SVGSVGElement || element instanceof HTMLIFrameElement) return true;
+    if (
+      element instanceof HTMLImageElement ||
+      element instanceof HTMLVideoElement ||
+      element instanceof HTMLCanvasElement ||
+      element instanceof SVGSVGElement ||
+      element instanceof HTMLIFrameElement
+    )
+      return true;
     for (const node of element.childNodes) {
       if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) return true;
     }
@@ -351,21 +378,35 @@ export function mountRefraction(nav: HTMLElement, mode: RefractionMode, chosen?:
       const image = new Image();
       if (new URL(url, location.href).origin !== location.origin) image.crossOrigin = 'anonymous';
       image.src = url;
-      imageColors.set(url, image.decode().then(() => {
-        const canvas = document.createElement('canvas');
-        canvas.width = canvas.height = 8;
-        const context = canvas.getContext('2d', { willReadFrequently: true });
-        if (!context) throw new Error('no canvas');
-        context.drawImage(image, 0, 0, 8, 8);
-        const data = context.getImageData(0, 0, 8, 8).data;
-        let r = 0, g = 0, b = 0, weight = 0;
-        for (let k = 0; k < data.length; k += 4) {
-          const a = data[k + 3]! / 255;
-          r += data[k]! * a; g += data[k + 1]! * a; b += data[k + 2]! * a; weight += a;
-        }
-        imageColors.set(url, weight ? [r / weight, g / weight, b / weight] : null);
-        scheduleCheck();
-      }).catch(() => { imageColors.set(url, null); }));
+      imageColors.set(
+        url,
+        image
+          .decode()
+          .then(() => {
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = 8;
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            if (!context) throw new Error('no canvas');
+            context.drawImage(image, 0, 0, 8, 8);
+            const data = context.getImageData(0, 0, 8, 8).data;
+            let r = 0,
+              g = 0,
+              b = 0,
+              weight = 0;
+            for (let k = 0; k < data.length; k += 4) {
+              const a = data[k + 3]! / 255;
+              r += data[k]! * a;
+              g += data[k + 1]! * a;
+              b += data[k + 2]! * a;
+              weight += a;
+            }
+            imageColors.set(url, weight ? [r / weight, g / weight, b / weight] : null);
+            scheduleCheck();
+          })
+          .catch(() => {
+            imageColors.set(url, null);
+          }),
+      );
       return undefined;
     }
     return known instanceof Promise ? undefined : known;
@@ -384,10 +425,13 @@ export function mountRefraction(nav: HTMLElement, mode: RefractionMode, chosen?:
     const box = target.getBoundingClientRect();
     if (!box.width || !box.height) return { busy: false };
     let busy = false;
-    let r = 0, g = 0, b = 0, hits = 0;
-    for (const fy of [.2, .5, .8]) {
+    let r = 0,
+      g = 0,
+      b = 0,
+      hits = 0;
+    for (const fy of [0.2, 0.5, 0.8]) {
       for (let i = 0; i < 7; i++) {
-        const x = box.left + box.width * (i + .5) / 7;
+        const x = box.left + (box.width * (i + 0.5)) / 7;
         const y = box.top + box.height * fy;
         for (const element of document.elementsFromPoint(x, y)) {
           if (nav.contains(element) || element === document.documentElement || element === document.body) continue;
@@ -395,7 +439,12 @@ export function mountRefraction(nav: HTMLElement, mode: RefractionMode, chosen?:
           busy = true;
           const url = imageOf(element);
           const color = url ? imageColor(url) : undefined;
-          if (color) { r += color[0]; g += color[1]; b += color[2]; hits++; }
+          if (color) {
+            r += color[0];
+            g += color[1];
+            b += color[2];
+            hits++;
+          }
           break;
         }
       }
@@ -404,7 +453,8 @@ export function mountRefraction(nav: HTMLElement, mode: RefractionMode, chosen?:
     return hits >= 5 ? { busy, color: [r / hits, g / hits, b / hits] } : { busy };
   }
 
-  const mix = (color: Rgb, toward: number, amount: number) => color.map((c) => Math.round(c + (toward - c) * amount)).join(' ');
+  const mix = (color: Rgb, toward: number, amount: number) =>
+    color.map((c) => Math.round(c + (toward - c) * amount)).join(' ');
 
   let checking = 0;
   function checkBehind(): void {
@@ -415,9 +465,9 @@ export function mountRefraction(nav: HTMLElement, mode: RefractionMode, chosen?:
       // Over images the rim, the top highlight and the shadow take the image's colour, like iOS glass picking up
       // what's under it.
       if (color) {
-        target.style.setProperty('--lg-nav-rim', `rgb(${mix(color, 255, .45)} / .8)`);
-        target.style.setProperty('--lg-nav-highlight', `rgb(${mix(color, 255, .7)} / .95)`);
-        target.style.setProperty('--lg-nav-shadow', `rgb(${mix(color, 0, .35)} / .38)`);
+        target.style.setProperty('--lg-nav-rim', `rgb(${mix(color, 255, 0.45)} / .8)`);
+        target.style.setProperty('--lg-nav-highlight', `rgb(${mix(color, 255, 0.7)} / .95)`);
+        target.style.setProperty('--lg-nav-shadow', `rgb(${mix(color, 0, 0.35)} / .38)`);
       } else {
         for (const name of ['--lg-nav-rim', '--lg-nav-highlight', '--lg-nav-shadow']) target.style.removeProperty(name);
       }
@@ -430,42 +480,70 @@ export function mountRefraction(nav: HTMLElement, mode: RefractionMode, chosen?:
   // While the page is hidden nothing is drawn, so skip the work and catch up once it is visible again.
   let stale = false;
   function schedule(): void {
-    if (document.hidden) { stale = true; return; }
+    if (document.hidden) {
+      stale = true;
+      return;
+    }
     if (!pending) pending = requestAnimationFrame(paint);
     scheduleAlign();
     scheduleCheck();
   }
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      cancelAnimationFrame(pending); cancelAnimationFrame(aligning); cancelAnimationFrame(checking);
-      if (pending || aligning || checking) stale = true;
-      pending = aligning = checking = 0;
-    } else if (stale) {
-      stale = false;
-      schedule();
-    }
-  }, { signal: listeners.signal });
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.hidden) {
+        cancelAnimationFrame(pending);
+        cancelAnimationFrame(aligning);
+        cancelAnimationFrame(checking);
+        if (pending || aligning || checking) stale = true;
+        pending = aligning = checking = 0;
+      } else if (stale) {
+        stale = false;
+        schedule();
+      }
+    },
+    { signal: listeners.signal },
+  );
 
-  async function buildCopyFilter(layer: RefractionLayer, map: string, width: number, height: number, scale: number): Promise<void> {
+  async function buildCopyFilter(
+    layer: RefractionLayer,
+    map: string,
+    width: number,
+    height: number,
+    scale: number,
+  ): Promise<void> {
     // feImage loads data URLs asynchronously and WebKit caches whatever the filter drew while the map was missing,
     // so decode the map first.
     const image = new Image();
     image.src = map;
-    try { await image.decode(); } catch { return; }
+    try {
+      await image.decode();
+    } catch {
+      return;
+    }
     if (layer.width !== width || layer.height !== height || !layer.copy) return;
     // In bounding-box units the displacement scales with each side, so the scale is given per the shorter side and
     // the longer axis is squeezed to match: the bend comes out the same number of pixels both ways.
     const short = Math.min(width, height);
     const kx = short / width;
     const ky = short / height;
-    for (const [name, value] of Object.entries({ x: 0, y: 0, width: 1, height: 1 })) layer.filter.setAttribute(name, String(value));
+    for (const [name, value] of Object.entries({ x: 0, y: 0, width: 1, height: 1 }))
+      layer.filter.setAttribute(name, String(value));
     layer.filter.replaceChildren(
       svgElement('feImage', { href: map, x: 0, y: 0, width: 1, height: 1, preserveAspectRatio: 'none', result: 'raw' }),
       svgElement('feColorMatrix', {
-        in: 'raw', type: 'matrix', result: 'rim',
+        in: 'raw',
+        type: 'matrix',
+        result: 'rim',
         values: `${kx} 0 0 0 ${(1 - kx) / 2} 0 ${ky} 0 0 ${(1 - ky) / 2} 0 0 1 0 0 0 0 0 1 0`,
       }),
-      svgElement('feDisplacementMap', { in: 'SourceGraphic', in2: 'rim', xChannelSelector: 'R', yChannelSelector: 'G', scale: scale / short }),
+      svgElement('feDisplacementMap', {
+        in: 'SourceGraphic',
+        in2: 'rim',
+        xChannelSelector: 'R',
+        yChannelSelector: 'G',
+        scale: scale / short,
+      }),
     );
     layer.filter.id = `${layer.filter.id.replace(/-v\d+$/, '')}-v${++layer.version}`;
     layer.twin?.remove();
