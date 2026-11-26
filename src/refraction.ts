@@ -67,7 +67,29 @@ export function rimPixels(width: number, height: number, corner: number, clear: 
   return data;
 }
 
+// Rim maps are pure functions of their size, corner and clearness. Bars, rows and More menus of the same size share
+// one, and a bar that resizes back and forth (compact, collapse) reuses the earlier map instead of redrawing it.
+const rimMaps = new Map<string, string>();
+const RIM_MAP_CACHE_SIZE = 24;
+
 function rimMap(width: number, height: number, corner: number, clear: boolean): string | null {
+  const key = `${width}x${height}r${corner}${clear ? 'c' : 't'}`;
+  const cached = rimMaps.get(key);
+  if (cached) {
+    // Most recently used last, so the oldest entry is evicted first.
+    rimMaps.delete(key);
+    rimMaps.set(key, cached);
+    return cached;
+  }
+  const url = drawRimMap(width, height, corner, clear);
+  if (url) {
+    rimMaps.set(key, url);
+    if (rimMaps.size > RIM_MAP_CACHE_SIZE) rimMaps.delete(rimMaps.keys().next().value!);
+  }
+  return url;
+}
+
+function drawRimMap(width: number, height: number, corner: number, clear: boolean): string | null {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
