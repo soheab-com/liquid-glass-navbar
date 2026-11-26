@@ -24,6 +24,11 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   const { signal } = listeners;
   // Observers, frames and other teardown registered here run when destroy() aborts `listeners`.
   const disposer = createDisposer(signal);
+  // Authored `class` and `style` attributes, so destroy() can drop the empty ones the navbar leaves behind.
+  const authoredAttributes = new WeakMap<Element, { class: boolean; style: boolean }>();
+  for (const element of [nav, ...nav.querySelectorAll('*')]) {
+    authoredAttributes.set(element, { class: element.hasAttribute('class'), style: element.hasAttribute('style') });
+  }
   const lens = document.createElement('span');
   lens.className = 'lg-navbar__lens';
   lens.setAttribute('aria-hidden', 'true');
@@ -2730,6 +2735,12 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       setColors();
       for (const name of [...nav.classList]) if (name === 'lg-navbar' || name.startsWith('lg-navbar--')) nav.classList.remove(name);
       lens.remove();
+      for (const element of [nav, ...nav.querySelectorAll('*')]) {
+        const authored = authoredAttributes.get(element);
+        for (const name of ['class', 'style'] as const) {
+          if (!authored?.[name] && element.getAttribute(name)?.trim() === '') element.removeAttribute(name);
+        }
+      }
     },
   };
 }
