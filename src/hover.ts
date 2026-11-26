@@ -1,4 +1,4 @@
-import type { NavbarItem } from './index.js';
+import type { NavbarItem } from './types.js';
 
 export interface NavbarHoverOptions {
   /** Time before previewing an item, in milliseconds. Defaults to zero. */

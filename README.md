@@ -160,7 +160,10 @@ const navbar = mountLiquidGlassNavbar(document.querySelector('#catalog')!, {
 ## Code map
 
 - [Local API index](docs/api.md) — integration, public types, and instance methods. The hosted docs also have a [plain-text index](https://soheab.com/navbar-builder/docs/llms.txt).
-- [src/index.ts](src/index.ts) — package entry point, public types, selection, swipe gestures, layout, overflow, and lifecycle.
+- [src/index.ts](src/index.ts) — package entry point. It only re-exports.
+- [src/navbar.ts](src/navbar.ts) — the mounted navbar: selection, swipe gestures, layout, overflow, collapse, keyed updates, and `destroy()`.
+- [src/types.ts](src/types.ts) — public option, method, and item types.
+- [src/dom.ts](src/dom.ts), [src/limits.ts](src/limits.ts), [src/update.ts](src/update.ts), [src/view-transition.ts](src/view-transition.ts), and [src/lifecycle.ts](src/lifecycle.ts) — markup helpers, visible-item limits, keyed-update matching, View Transition support, and the cleanup helper `destroy()` runs.
 - [src/navbar.css](src/navbar.css) — layout, glass styling, custom properties, and accessibility media queries.
 - [src/popover.ts](src/popover.ts) — shared anchored popovers, including the surface used by the More menu.
 - [src/spring.ts](src/spring.ts) — spring motion and rubber-band math.
