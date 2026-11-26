@@ -636,6 +636,12 @@
 ::view-transition-old(.lg-navbar-live) { display: none; }
 ::view-transition-new(.lg-navbar-live) { animation: none; mix-blend-mode: normal; opacity: 1; }
 
+/* Keyboard focus: a ring inside the item, so it stays clear of its neighbours and readable on any glass tint. */
+.lg-navbar--enabled :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *):focus-visible {
+  outline: 2px solid var(--lg-nav-focus, var(--lg-nav-accent, #2152a5));
+  outline-offset: -2px;
+}
+
 /* Increase Contrast: an almost opaque surface, a solid rim, a stronger lens ring and full-strength labels. */
 @media (prefers-contrast: more) {
   .lg-navbar--enabled {
