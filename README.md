@@ -159,6 +159,16 @@ const navbar = mountLiquidGlassNavbar(document.querySelector('#catalog')!, {
 - **Current item.** When more than one item has `aria-current="page"`, mounting, `sync()`, and `update()` all choose the item in the highest-numbered row, then the first in markup order. Set `warnOnMultipleCurrent: true` in development builds to log a warning when this happens.
 - **View Transitions.** Pass `viewTransitionName: 'site-navigation'` to give the bar a unique `view-transition-name`. The navbar injects styles that show only the live new snapshot, without fading or additive blending. Its own springs keep running while `document.startViewTransition()` cross-fades the rest of the page. The name and styles are removed in `destroy()`.
 
+## Browser support
+
+| Browser | Minimum | Glass |
+| --- | --- | --- |
+| Chrome, Edge and other Chromium browsers | 111 | Bends the live backdrop |
+| Safari (macOS and iOS) | 16.2 | Bends a copy of the elements marked `data-navbar-refract`; frosted otherwise |
+| Firefox | 121 | Bends a copy of the elements marked `data-navbar-refract`; frosted otherwise |
+
+Every engine gets the same layout, lens, gestures and overflow. Only how the glass bends what's behind it differs: Safari and Firefox can't apply SVG filters to a backdrop, so they bend a copy of the backdrop elements you mark. Without marked elements they show frosted glass with blur, saturation and a rim highlight. Reduce Transparency turns the bending off everywhere. The end-to-end tests run in Chromium, Firefox and WebKit.
+
 ## Code map
 
 - [Local API index](docs/api.md) — integration, public types, and instance methods. The hosted docs also have a [plain-text index](https://soheab.com/navbar-builder/docs/llms.txt).
