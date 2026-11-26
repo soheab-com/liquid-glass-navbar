@@ -103,6 +103,24 @@ describe('createSpring', () => {
   });
 });
 
+describe('hidden pages', () => {
+  it('settles moving springs on their targets when the page is hidden', () => {
+    const listeners: (() => void)[] = [];
+    const doc = { hidden: false, addEventListener: (_: string, listener: () => void) => listeners.push(listener) };
+    vi.stubGlobal('document', doc);
+    const onRest = vi.fn();
+    const spring = createSpring(0, () => {}, { onRest });
+    spring.to(80);
+    frames(2);
+    expect(spring.moving).toBe(true);
+    doc.hidden = true;
+    for (const listener of listeners) listener();
+    expect(spring.moving).toBe(false);
+    expect(spring.value).toBe(80);
+    expect(onRest).toHaveBeenCalledWith(80);
+  });
+});
+
 describe('rubber band', () => {
   it('follows 1:1 inside the range and resists beyond it', () => {
     expect(rubberBanded(50, 0, 100, 100)).toBe(50);

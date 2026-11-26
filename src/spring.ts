@@ -22,6 +22,20 @@ export interface Spring {
   readonly moving: boolean;
 }
 
+// Springs that are moving. When the page is hidden the browser stops animation frames, so a spring would freeze
+// mid-flight and finish its motion when the page comes back; instead they settle on their targets straight away.
+const moving = new Set<() => void>();
+let watchingVisibility = false;
+function settleWhenHidden(settle: () => void): void {
+  moving.add(settle);
+  if (watchingVisibility || typeof document === 'undefined') return;
+  watchingVisibility = true;
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) return;
+    for (const settleSpring of [...moving]) settleSpring();
+  });
+}
+
 /** A value that springs towards its target and can be retargeted mid-flight, keeping its speed. */
 export function createSpring(
   initial: number,
@@ -36,7 +50,12 @@ export function createSpring(
     frame = 0,
     last = 0;
 
+  const settle = (): void => {
+    cancelAnimationFrame(frame);
+    rest();
+  };
   const rest = (): void => {
+    moving.delete(settle);
     value = target;
     velocity = 0;
     frame = 0;
@@ -73,9 +92,11 @@ export function createSpring(
       if (!frame) {
         last = performance.now();
         frame = requestAnimationFrame(step);
+        settleWhenHidden(settle);
       }
     },
     set(next) {
+      moving.delete(settle);
       cancelAnimationFrame(frame);
       frame = 0;
       value = target = next;
@@ -83,6 +104,7 @@ export function createSpring(
       onUpdate(value);
     },
     stop() {
+      moving.delete(settle);
       cancelAnimationFrame(frame);
       frame = 0;
       velocity = 0;
