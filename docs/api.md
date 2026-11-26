@@ -14,8 +14,10 @@ Supply a nav element containing buttons or `<a href="…">` items. Mark the star
 | Configure a navbar | `LiquidGlassNavbarOptions` in [src/index.ts](../src/index.ts) and the [options reference](https://soheab.com/navbar-builder/docs/#options) |
 | Update an existing instance | `LiquidGlassNavbar` in [src/index.ts](../src/index.ts) and the [methods reference](https://soheab.com/navbar-builder/docs/#methods) |
 | Set selection programmatically | `navbar.select(item)` updates selection without firing `onSelect` |
-| Collapse numbered rows | `collapsible`, `setCollapsed(value)`, `collapsed`, `onCollapse`, `onResize` |
-| Hide or reconcile content | `setItemHidden(item, hidden)`, `update(replacementNav, options)`, `data-navbar-key` |
+| Collapse numbered rows | `collapsible`, `setCollapsed(value)`, `collapsed`, `onCollapse`, `onCollapseEnd`, `onResize`, `data-navbar-collapsed-current` |
+| Hide or reconcile content | `setItemHidden(item, hidden)`, `update(replacementNav, options)` (including `layout`, `maxRows`, `collapsible`), `data-navbar-key`, `warnOnMultipleCurrent` |
+| Give each row its own More | `overflow.perRow`, `overflow.rowLimits`, `openOverflow({ row })` |
+| Keep the bar live in a View Transition | `viewTransitionName` |
 | Size and limit a section | `data-navbar-equal`, `data-navbar-max-visible`, `NavbarVisibleLimit` |
 | Preview sections on hover or swipe | `hoverNavigation`, `NavbarHoverOptions`, and `data-navbar-no-hover` |
 | Style the lens | `lens`, `setLens(options)`, `NavbarLensOptions`, and `NavbarLensStyle` |

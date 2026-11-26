@@ -32,6 +32,7 @@ const paths = {
 let packages = false;
 let pinned = false;
 let top: NavbarItem;
+let showPresets = true;
 
 function item(key: string, label: string, icon: keyof typeof paths): HTMLButtonElement {
   const button = document.createElement('button');
@@ -66,21 +67,24 @@ function section(row: number, ...buttons: HTMLButtonElement[]): HTMLElement {
 
 function build(): HTMLElement {
   const replacement = document.createElement('nav');
-  const filters = section(1, ...['All', 'TypeScript', 'Python', 'Rust'].map((label) => item(label.toLowerCase(), label, 'filter')));
-  filters.dataset.navbarMaxVisible = '3';
-  const presets = section(2, item('recent', 'Recent', 'star'), item('favorites', 'Favorites', 'star'));
+  const filters = section(1, ...['All', 'TypeScript', 'Python', 'Rust', 'Java', 'Go'].map((label) => item(label.toLowerCase(), label, 'filter')));
+  filters.dataset.navbarMaxVisible = '0:2 900:none';
+  const presets = section(2, ...['All presets', 'Recent', 'Favorites', 'Languages', 'Popular']
+    .map((label) => item(label.toLowerCase(), label, 'star')));
+  if (!packages) presets.firstElementChild?.setAttribute('aria-current', 'page');
+  for (const preset of presets.children) preset.setAttribute('data-navbar-overflow', 'never');
   presets.dataset.navbarEqual = '';
   const libraries = item('libraries', 'Libraries', 'library');
   const secondary = packages ? item('packages', 'Packages', 'grid') : item('activity', 'Activity', 'grid');
-  (packages ? secondary : libraries).setAttribute('aria-current', 'page');
+  if (packages || !showPresets) (packages ? secondary : libraries).setAttribute('aria-current', 'page');
+  libraries.dataset.navbarCollapsedCurrent = '';
   libraries.dataset.navbarOverflow = 'never';
   secondary.dataset.navbarOverflow = 'never';
   const about = item('about', 'About', 'grid');
   const up = item('top', 'Top', 'top');
   up.dataset.navbarAction = '';
   up.dataset.navbarOverflow = 'never';
-  up.hidden = !pinned && scrollY < 240;
-  replacement.append(filters, presets, section(3, libraries, secondary, about, up));
+  replacement.append(filters, ...(showPresets ? [presets] : []), section(3, libraries, secondary, up, about));
   return replacement;
 }
 
@@ -99,12 +103,15 @@ function render(label: string): void {
 
 nav.append(...build().children);
 top = nav.querySelector<NavbarItem>('[data-navbar-key="top"]')!;
+top.hidden = scrollY < 240;
 const bar = mountLiquidGlassNavbar(nav, {
   layout: 'rows',
+  maxRows: 3,
+  viewTransitionName: 'demo-catalog-navigation',
   collapsible: { rows: [1, 2], initial: localStorage.getItem('navbar-demo-collapsed') === 'true' ? 'collapsed' : 'open' },
   onCollapse: (collapsed) => localStorage.setItem('navbar-demo-collapsed', String(collapsed)),
   onResize: ({ height }) => root.style.setProperty('--catalog-space', `${height}px`),
-  overflow: { maxVisible: { 0: 8, 900: 12 }, moreLabel: false },
+  overflow: { perRow: true, rowLimits: { 1: 4, 3: { 0: 0, 900: 4 } }, moreLabel: false },
   lens: lensOptions(),
   colors: { selected: 'color-mix(in srgb, var(--accent) 75%, var(--text))' },
   scrollCompact: { threshold: 24 },
@@ -118,17 +125,34 @@ const bar = mountLiquidGlassNavbar(nav, {
 function updateTop(): void {
   bar.setItemHidden(top, !pinned && scrollY < 240);
 }
+updateTop();
 addEventListener('scroll', updateTop, { passive: true });
 pin.addEventListener('click', () => {
   pinned = !pinned;
   pin.setAttribute('aria-pressed', String(pinned));
   updateTop();
 });
+let transition: ViewTransition | undefined;
+function replaceCatalog(): void {
+  const apply = () => {
+    bar.update(build(), { layout: 'rows', maxRows: showPresets ? 3 : 2, collapsible: { rows: showPresets ? [1, 2] : [1] } });
+    render(packages ? 'Packages' : 'Libraries');
+  };
+  transition?.skipTransition();
+  if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) apply();
+  else {
+    transition = document.startViewTransition(apply);
+    const current = transition;
+    void current.finished.then(() => { if (transition === current) transition = undefined; });
+  }
+}
 document.querySelector('#replace')!.addEventListener('click', () => {
   packages = !packages;
-  bar.update(build());
-  top = nav.querySelector<NavbarItem>('[data-navbar-key="top"]') ?? bar.overflowItems.find((item) => item.dataset.navbarKey === 'top')!;
-  render(packages ? 'Packages' : 'Libraries');
+  replaceCatalog();
+});
+document.querySelector('#presets')!.addEventListener('change', (event) => {
+  showPresets = (event.currentTarget as HTMLInputElement).checked;
+  replaceCatalog();
 });
 const darkScheme = matchMedia('(prefers-color-scheme: dark)');
 function applyTheme(): void {

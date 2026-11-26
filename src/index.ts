@@ -78,6 +78,11 @@ export interface NavbarUpdateOptions {
   key?: (element: HTMLElement) => string | undefined;
   /** Defaults to true. */
   animate?: boolean;
+  layout?: NavbarLayout;
+  /** Set to null to restore the default limit. */
+  maxRows?: number | null;
+  /** Changes which rows collapse without remounting the navbar. */
+  collapsible?: boolean | NavbarCollapseOptions;
 }
 
 export interface NavbarOverflowOptions {
@@ -93,6 +98,10 @@ export interface NavbarOverflowOptions {
   /** Show at most this many items in the bar, not counting More. */
   maxVisible?: NavbarVisibleLimit;
   moreLabel?: boolean;
+  /** In rows layout, give each authored row its own More and visible-item budget. */
+  perRow?: boolean;
+  /** Overrides maxVisible for individual authored rows when perRow is enabled. */
+  rowLimits?: Readonly<Record<number, NavbarVisibleLimit>>;
   /** Keep the popover inside this element. Defaults to the viewport. */
   boundary?: HTMLElement;
   /** Close More when the page scrolls. Default false: it stays open, and only a tap outside closes it. */
@@ -182,6 +191,12 @@ export interface LiquidGlassNavbarOptions {
   scrollCompact?: boolean | ScrollCompactOptions;
   collapsible?: boolean | NavbarCollapseOptions;
   onCollapse?: (collapsed: boolean) => void;
+  /** Fires when the committed collapse or expand reaches its final layout. */
+  onCollapseEnd?: (collapsed: boolean) => void;
+  /** Unique snapshot name. The navbar stays live during a same-document View Transition. */
+  viewTransitionName?: string;
+  /** Log a warning for multiple current items. Enable this in development builds. */
+  warnOnMultipleCurrent?: boolean;
   /** Reports changes to the navbar's border box, including spring frames. */
   onResize?: (size: NavbarSize) => void;
   onCompactChange?: (compact: boolean) => void;
@@ -259,7 +274,7 @@ export interface LiquidGlassNavbar {
   setOverflow(overflow?: LiquidGlassNavbarOptions['overflow']): void;
   /** Items currently behind More, in order. */
   readonly overflowItems: readonly NavbarItem[];
-  openOverflow(options?: { focus?: boolean }): void;
+  openOverflow(options?: { focus?: boolean; row?: number }): void;
   closeOverflow(): void;
   /** Show a count, dot or status on an item. Pass `null` to remove it. */
   setBadge(item: NavbarItem, badge: NavbarBadge | null): void;
@@ -281,6 +296,13 @@ export interface LiquidGlassNavbar {
   destroy(): void;
 }
 
+interface More {
+  button: HTMLButtonElement;
+  dot: HTMLElement;
+  host: HTMLElement;
+  popover: AnchoredPopover;
+}
+
 interface Gesture {
   id: number;
   start: number;
@@ -289,12 +311,12 @@ interface Gesture {
   free: boolean;
   dragging: boolean;
   draggedItem: NavbarItem | null;
-  openedOverflow: boolean;
+  openedOverflow?: More;
   collapseBeforePreview?: boolean;
 }
 
 interface Box { left: number; top: number; width: number; height: number }
-interface Unit { element: HTMLElement; width: number; row: number | undefined }
+interface Unit { element: HTMLElement; width: number; row: number | undefined; equalItemWidth?: number }
 
 /** A tab or action: a `<button>`, or an `<a href>` for sites where each tab is its own page. */
 export type NavbarItem = HTMLButtonElement | HTMLAnchorElement;
@@ -341,6 +363,30 @@ function overflowSettings(value: LiquidGlassNavbarOptions['overflow']): NavbarOv
   return value;
 }
 
+function mountViewTransition(nav: HTMLElement, name: string | undefined): (() => void) | undefined {
+  if (!name || name === 'none' || name === 'auto' || name === 'match-element' || !CSS.supports('view-transition-name', name)) return;
+  const properties = ['view-transition-name', 'view-transition-class'];
+  const previous = properties.map((property) => [nav.style.getPropertyValue(property), nav.style.getPropertyPriority(property)] as const);
+  nav.style.setProperty('view-transition-name', name);
+  nav.style.setProperty('view-transition-class', 'lg-navbar-live');
+  // Name-based rules apply everywhere; some engines parse class selectors without matching them.
+  const styles = document.createElement('style');
+  {
+    const selector = CSS.escape(name);
+    styles.textContent = `
+      ::view-transition-group(${selector}) { animation: none; }
+      ::view-transition-image-pair(${selector}) { isolation: auto; }
+      ::view-transition-old(${selector}) { display: none; }
+      ::view-transition-new(${selector}) { animation: none; mix-blend-mode: normal; opacity: 1; }
+    `;
+    document.head.append(styles);
+  }
+  return () => {
+    styles.remove();
+    properties.forEach((property, index) => nav.style.setProperty(property, ...previous[index]!));
+  };
+}
+
 export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNavbarOptions): LiquidGlassNavbar {
   const listeners = new AbortController();
   const { signal } = listeners;
@@ -349,6 +395,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   lens.setAttribute('aria-hidden', 'true');
   nav.classList.add('lg-navbar');
   nav.prepend(lens);
+  const removeTransition = mountViewTransition(nav, options.viewTransitionName);
   const mode = refractionMode();
   const refraction = mode && (mode !== 'copy' || options.refractionSources !== false)
     ? mountRefraction(nav, mode, options.refractionSources || undefined)
@@ -384,7 +431,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   const inContext = (element: Element): boolean => !context?.replace || Boolean(element.closest(`[${CONTEXT}]`));
   const sections = (): HTMLElement[] => [nav, ...nav.querySelectorAll<HTMLElement>(sectionSelector)]
     .filter((section) => section === nav || inContext(section));
-  const items = (): NavbarItem[] => [...sections().flatMap(buttonsIn), ...(more ? buttonsIn(more.host) : [])].filter(inContext);
+  const items = (): NavbarItem[] => [...sections().flatMap(buttonsIn), ...allMore().flatMap((entry) => buttonsIn(entry.host))].filter(inContext);
   const tabs = (): NavbarItem[] => items().filter((button) => isAvailable(button) && !isAction(button));
   let lensSize = 0;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -393,8 +440,15 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     if (ink) paintInk();
   }, { response: .38, dampingRatio: .78, onRest: settleInk });
 
+  // A bottom dock moves as rows shrink. Keep the lens in screen space during that spring
+  // while ordinary reflow still measures relative to the navbar.
+  let crossReference: number | undefined;
+  let crossOffset = 0;
+  const navTop = (): number => nav.getBoundingClientRect().top + nav.clientTop;
+  const crossOrigin = (): number => crossOffset + (crossReference === undefined ? 0 : navTop() - crossReference);
+  const drawCross = (offset: number): void => { lens.style.top = `${offset - crossOrigin()}px`; };
   const crossSpring = createSpring(0, (offset) => {
-    lens.style.top = `${offset}px`;
+    drawCross(offset);
     if (ink) paintInk();
   }, { response: .38, dampingRatio: .9, onRest: settleInk });
 
@@ -430,8 +484,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   const plainTab = (item: NavbarItem): boolean => item.getAttribute('aria-current') !== 'page' && !item.classList.contains('lg-navbar__preview');
   /** The tabs the highlight paints: everything shown, except a More menu's list, which the lens doesn't visit. */
   function inkable(): NavbarItem[] {
-    const menu = more?.host.classList.contains('lg-navbar__overflow--menu') ? more.host : undefined;
-    return items().filter((item) => isAvailable(item) && !menu?.contains(item));
+    return items().filter((item) => isAvailable(item) && !inMoreMenu(item));
   }
 
   // Where a part sits before magnify or tap feedback moves it: the copy takes that place inside the tab, and the
@@ -456,7 +509,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
 
   function inkTabs(tabsToPaint: NavbarItem[], accent: { label: string; icon: string }, unselected: { label: string; icon: string }, haveReference: boolean): InkTab[] {
     const found = tabsToPaint.map((item) => {
-      const label = item.querySelector<HTMLElement>('[data-navbar-label]') ?? undefined;
+      const label = item === collapseToggle ? undefined : item.querySelector<HTMLElement>('[data-navbar-label]') ?? undefined;
       const icon = item.querySelector<HTMLElement | SVGElement>('[data-navbar-icon]') ?? undefined;
       // Read every place first, then add the copies, so measuring never waits on a layout per tab.
       return { item, label, icon, labelPlace: label && placeOf(item, label), iconPlace: icon && placeOf(item, icon) };
@@ -634,9 +687,10 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     lens.style.width = `${width}px`;
     lens.style.height = `${height}px`;
     lens.style.left = vertical() ? `${box.left}px` : '0';
-    const lensTop = vertical() ? 0 : box.top;
+    const lensTop = (vertical() ? 0 : box.top) + crossOrigin();
     if (animateRow && !lens.hidden) {
-      if (crossSpring.target !== lensTop) crossSpring.to(lensTop);
+      if (Math.abs(crossSpring.target - lensTop) > .05) crossSpring.to(lensTop);
+      drawCross(crossSpring.value);
     } else crossSpring.set(lensTop);
     lensSize = vertical() ? height : width;
     lens.hidden = false;
@@ -654,14 +708,29 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
 
   // ---- Overflow: items that don't fit move into a popover behind a More button, and back when there's room. ----
 
-  let more: { button: HTMLButtonElement; dot: HTMLElement; host: HTMLElement; popover: AnchoredPopover } | undefined;
+  const moreByRow = new Map<number, More>();
+  const allMore = (): More[] => [...moreByRow.values()];
+  const moreFor = (button: HTMLElement | undefined): More | undefined =>
+    button && allMore().find((entry) => entry.button === button || entry.host.contains(button));
+  const inMoreMenu = (button: HTMLElement): boolean => Boolean(moreFor(button)?.host.matches('.lg-navbar__overflow--menu')
+    && moreFor(button)?.host.contains(button));
+  const isMore = (button: HTMLElement): boolean => moreFor(button)?.button === button;
+  const openMore = (): More | undefined => allMore().find((entry) => entry.popover.open);
+  const hideMore = (): void => allMore().forEach((entry) => entry.popover.hide());
+  const rowOfItem = (button: NavbarItem): number => {
+    const home = homeOf(button);
+    return rowOf(home === nav ? button : home) ?? 1;
+  };
+  const homeOf = (button: NavbarItem): HTMLElement => homes.get(button) ?? button.parentElement ?? nav;
   const homes = new Map<NavbarItem, HTMLElement>();
-  let sequence: NavbarItem[] = [];
+  const anchors = new Map<NavbarItem, Comment>();
+  const parkedItems = new Map<Node, NavbarItem>();
   const widths = new WeakMap<HTMLElement, { key: string; width: number }>();
   let lastOverflow: NavbarItem[] = [];
 
-  function ensureMore(): NonNullable<typeof more> {
-    if (more) return more;
+  function ensureMore(row: number): More {
+    const existing = moreByRow.get(row);
+    if (existing) return existing;
     const settings = overflow ?? {};
     const style = settings.style ?? 'menu';
     const button = document.createElement('button');
@@ -705,43 +774,49 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       spring: () => motionOn('popovers'),
       // Read each time, so setOverflow changes it without rebuilding More.
       get closeOnScroll() { return overflow?.closeOnScroll ?? false; },
-      onOpen: () => { if (style === 'expand') sync(); },
-      onClose: () => { if (style === 'expand') sync(); },
+      onOpen: () => sync(),
+      onClose: () => sync(),
     });
-    more = { button, dot, host, popover };
-    return more;
+    const entry = { button, dot, host, popover };
+    moreByRow.set(row, entry);
+    return entry;
   }
 
-  function removeMore(): void {
-    if (!more) return;
-    restoreAll();
-    more.popover.destroy();
-    more.button.remove();
-    more = undefined;
+  function removeMore(row?: number): void {
+    for (const [key, entry] of moreByRow) {
+      if (row !== undefined && row !== key) continue;
+      for (const item of buttonsIn(entry.host)) restore(item);
+      moreByRow.delete(key);
+      entry.popover.destroy();
+      releaseCollapseUnit(entry.button);
+      entry.button.remove();
+    }
   }
 
   function flowItems(): NavbarItem[] {
-    // Every overflowable item in reading order, wherever it currently is.
-    const inBar = sections().flatMap(buttonsIn).filter((button) => button !== more?.button);
-    const away = more ? buttonsIn(more.host) : [];
-    if (!away.length) return inBar;
-    const order = [...sequence.filter((button) => inBar.includes(button) || away.includes(button))];
-    for (const button of [...inBar, ...away]) if (!order.includes(button)) order.push(button);
-    return order;
+    const read = (home: HTMLElement): NavbarItem[] => {
+      const local = new Set(buttonsIn(home).filter((button) => !isMore(button) && inContext(button)));
+      return [...home.childNodes].flatMap((node) => {
+        const away = parkedItems.get(node);
+        if (away && inContext(away)) return [away];
+        if (local.has(node as NavbarItem)) return [node as NavbarItem];
+        return home === nav && node instanceof HTMLElement && node.hasAttribute('data-navbar-section') ? read(node) : [];
+      });
+    };
+    return read(nav);
   }
 
   function restore(button: NavbarItem): void {
-    const home = homes.get(button) ?? nav;
-    const after = sequence.slice(sequence.indexOf(button) + 1).find((next) => next.parentElement === home);
-    if (after) home.insertBefore(button, after);
-    else if (more?.button.parentElement === home) home.insertBefore(button, more.button);
-    else home.append(button);
+    const anchor = anchors.get(button);
+    if (anchor?.parentNode) anchor.replaceWith(button);
+    else (homes.get(button) ?? nav).append(button);
+    if (anchor) parkedItems.delete(anchor);
+    anchors.delete(button);
     homes.delete(button);
   }
 
   function restoreAll(): void {
-    if (!more) return;
-    for (const button of buttonsIn(more.host)) restore(button);
+    for (const entry of allMore()) for (const button of buttonsIn(entry.host)) restore(button);
   }
 
   function naturalWidth(button: HTMLElement): number {
@@ -769,8 +844,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     if (!isAvailableForLayout(button)) return 0;
     const cached = widths.get(button);
     const known = cached && cached.key === widthKey(button) ? cached.width : undefined;
-    if (button.parentElement && !more?.host.contains(button)) {
-      if (!isAvailableForLayout(button)) return 0;
+    if (button.parentElement && !moreFor(button)?.host.contains(button)) {
       // A bar that starts compact has no labelled width yet; its compact width will do until it expands.
       if (compact) return known ?? naturalWidth(button);
       const width = naturalWidth(button);
@@ -782,12 +856,11 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
 
   // Like isAvailable, but an item hidden only because it sits in a closed popover still counts.
   function isAvailableForLayout(button: HTMLElement): boolean {
+    if (button.hidden || (!homes.has(button as NavbarItem) && button.closest('[hidden]'))) return false;
     const home = homes.get(button as NavbarItem);
-    if (button.hidden || button.closest('.lg-navbar__collapse-hidden')
-        || home?.classList.contains('lg-navbar__collapse-hidden')) return false;
-    if (home === nav && collapseSpring.value <= 0 && isCollapsedUnit(button)) return false;
+    if (home?.hidden) return false;
     if (button.hasAttribute('data-navbar-hide-icon') && button.hasAttribute('data-navbar-hide-label')) return false;
-    return more?.host.contains(button) || button.getClientRects().length > 0;
+    return moreFor(button)?.host.contains(button) || button.getClientRects().length > 0;
   }
 
   function availableWidth(): number {
@@ -821,7 +894,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     };
   };
 
-  function breakLines(units: Unit[], room: number, gap: number, pad: number, single: boolean): Unit[][] {
+  function breakLines(units: Unit[], room: number, gap: number, pad: number, single: boolean, authoredRows = false): Unit[][] {
     if (single) return units.length ? [units] : [];
     const lines: Unit[][] = [];
     let line: Unit[] = [];
@@ -830,7 +903,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     for (const unit of units) {
       const add = (line.length ? gap : 0) + unit.width;
       const manualBreak = line.length > 0 && unit.row !== undefined && unit.row !== row;
-      if (line.length && (manualBreak || used + add > room + .5)) {
+      if (line.length && (manualBreak || (!authoredRows && used + add > room + .5))) {
         lines.push(line);
         line = [];
         used = pad;
@@ -866,201 +939,225 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     nav.style.removeProperty('--_lg-equal-width');
   }
 
-  /** Lay out rows and overflow. Runs on every sync, but only writes to the DOM when the result changes. */
+  const equalSections = new Set<HTMLElement>();
+
+  function clearSectionWidths(): void {
+    for (const section of equalSections) section.style.removeProperty('--_lg-section-equal-width');
+    equalSections.clear();
+  }
+
+  /** Measure and plan the expanded rows even when some are collapsed. Only their rendering changes. */
   function layoutPass(): void {
-    // Context actions pause rows and More: items stay where they are until the navigation comes back.
     if (context) return;
     const multi = multiRowActive();
-    paintCollapse();
-    const split = multi && layout === 'rows' && !sectioned();
+    const authoredRows = multi && layout === 'rows' && collapseElements().some((element) => rowOf(element) !== undefined);
+    const isSectioned = sectioned();
+    const split = authoredRows && !isSectioned;
+    const usesOverflow = overflowActive();
+    const lockRows = usesOverflow && authoredRows;
+    const perRow = usesOverflow && multi && layout === 'rows' && overflow?.perRow === true;
     nav.classList.toggle('lg-navbar--multirow', multi);
     nav.classList.toggle('lg-navbar--wrap', multi && layout === 'wrap');
     nav.classList.toggle('lg-navbar--split', split);
-    if (!overflowActive()) {
-      if (more) removeMore();
-    }
     placeCollapseToggle();
-    if (!multi && !overflowActive()) {
-      clearRows();
-      return;
-    }
-    if (overflowActive()) ensureMore();
-    const room = availableWidth();
-    const isSectioned = sectioned();
-    const equal = nav.classList.contains('lg-navbar--equal') || equalWidth;
+    clearSectionWidths();
 
-    // Widths for every item; items behind More use their last width in the bar, or come back to be measured.
+    // A hidden collapse unit still takes part in the expanded layout plan. Expose it only for
+    // this synchronous measurement, then put it back before the browser can paint.
+    const hiddenUnits = [...collapseUnits.keys()].filter((unit) => unit.classList.contains('lg-navbar__collapse-hidden'));
+    hiddenUnits.forEach((unit) => unit.classList.remove('lg-navbar__collapse-hidden'));
     let flow = flowItems();
     let measured = flow.map(widthOf);
-    let moreWidth = more ? measureMore() : 0;
     if (measured.some((width) => width === undefined)) {
       restoreAll();
       flow = flowItems();
       measured = flow.map(widthOf);
     }
-    let natural = measured.map((width) => width ?? 0);
-    if (equal) {
-      const widest = Math.max(0, ...natural);
-      natural = natural.map((width) => (width ? widest : 0));
-      moreWidth = Math.max(moreWidth, widest);
+    let widthsForLayout = measured.map((width) => width ?? 0);
+    const equal = nav.classList.contains('lg-navbar--equal') || equalWidth;
+    const widest = equal ? Math.max(0, ...widthsForLayout) : 0;
+    if (equal && multi) {
+      widthsForLayout = widthsForLayout.map((width) => width ? widest : 0);
       nav.style.setProperty('--_lg-equal-width', `${widest}px`);
     } else nav.style.removeProperty('--_lg-equal-width');
-    const widthFor = new Map(flow.map((button, index) => [button, natural[index] ?? 0]));
-    const homeOf = (button: NavbarItem): HTMLElement => (more?.host.contains(button) ? homes.get(button) : button.parentElement as HTMLElement) ?? nav;
+    const widthFor = new Map(flow.map((button, index) => [button, widthsForLayout[index] ?? 0]));
+    const active = flow.filter((button) => (widthFor.get(button) ?? 0) > 0);
+    const rowKeys = perRow ? [...new Set(active.map(rowOfItem))].sort((a, b) => a - b) : usesOverflow ? [0] : [];
+    for (const row of moreByRow.keys()) if (!rowKeys.includes(row)) removeMore(row);
 
-    const navSpace = horizontalSpace(nav);
-    const rowLimit = overflowActive() ? (maxRows ?? (multi ? Infinity : 1)) : Infinity;
-    const single = !multi;
+    const room = availableWidth();
+    const space = horizontalSpace(nav);
+    const rowLimit = usesOverflow ? (maxRows ?? (multi ? Infinity : 1)) : Infinity;
 
-    function unitsFor(kept: Set<NavbarItem>, moreHost: HTMLElement | undefined): Unit[] {
-      const visible = flow.filter((button) => kept.has(button) && (widthFor.get(button) ?? 0) > 0);
-      if (!isSectioned) {
-        const units: Unit[] = visible.map((button) => ({ element: button, width: widthFor.get(button) ?? 0, row: rowOf(button) }));
-        if (moreHost && more) units.push({ element: more.button, width: moreWidth, row: collapseToggle ? mainRow() : units[units.length - 1]?.row });
-        return sortByRow(units);
-      }
+    function onRow(button: NavbarItem): number | undefined {
+      return authoredRows ? rowOfItem(button) : multi ? rowOf(homeOf(button) === nav ? button : homeOf(button)) : undefined;
+    }
+
+    function unitsFor(visible: NavbarItem[], entry?: More, moreHome?: HTMLElement, triggerWidth = 0, row = 0): Unit[] {
       const units: Unit[] = [];
+      const byHome = new Map<HTMLElement, number[]>();
+      for (const button of visible) {
+        const home = homeOf(button);
+        const width = widthFor.get(button) ?? 0;
+        if (home === nav) units.push({ element: button, width, row: onRow(button) });
+        else {
+          const widths = byHome.get(home) ?? [];
+          widths.push(width);
+          byHome.set(home, widths);
+        }
+      }
+      const last = visible.at(-1);
+      const triggerRow = perRow ? row : collapseToggle ? mainRow() : last && onRow(last);
+      if (entry && moreHome === nav) units.push({ element: entry.button, width: triggerWidth, row: triggerRow });
+      else if (entry && moreHome) byHome.set(moreHome, [...(byHome.get(moreHome) ?? []), triggerWidth]);
+
+      const adjustable = new Map<HTMLElement, { count: number; overhead: number; natural: number }>();
       for (const section of sections().slice(1)) {
-        const members = visible.filter((button) => homeOf(button) === section);
-        const hasMore = moreHost === section && more !== undefined;
-        if (!members.length && !hasMore) continue;
-        const space = horizontalSpace(section);
-        const memberWidths = members.map((button) => widthFor.get(button) ?? 0);
-        if (hasMore) memberWidths.push(moreWidth);
-        const contentWidth = section.hasAttribute('data-navbar-equal')
-          ? Math.max(...memberWidths) * memberWidths.length
-          : memberWidths.reduce((sum, width) => sum + width, 0);
+        const members = byHome.get(section);
+        if (!members?.length) continue;
+        const sectionSpace = horizontalSpace(section);
+        const overhead = sectionSpace.pad + sectionSpace.gap * (members.length - 1);
+        const equalSection = section.hasAttribute('data-navbar-equal') && !vertical();
+        const natural = equalSection ? Math.max(...members) : 0;
+        if (equalSection) adjustable.set(section, { count: members.length, overhead, natural });
         units.push({
           element: section,
-          width: space.pad + contentWidth + space.gap * Math.max(0, memberWidths.length - 1),
-          row: rowOf(section),
+          width: overhead + (equalSection ? natural * members.length : members.reduce((sum, width) => sum + width, 0)),
+          row: authoredRows ? rowOf(section) ?? 1 : multi ? rowOf(section) : undefined,
         });
       }
-      for (const button of visible.filter((item) => homeOf(item) === nav)) {
-        units.push({ element: button, width: widthFor.get(button) ?? 0, row: rowOf(button) });
+      // Equal sections share the room left by other pills on the same row.
+      const rows = new Map<number, Unit[]>();
+      for (const unit of units) {
+        const row = unit.row ?? 1;
+        rows.set(row, [...(rows.get(row) ?? []), unit]);
       }
-      if (moreHost === nav && more) units.push({ element: more.button, width: moreWidth, row: collapseToggle ? mainRow() : undefined });
-      return sortByRow(units);
-    }
-
-    function sortByRow(units: Unit[]): Unit[] {
-      if (!units.some((unit) => unit.row !== undefined)) return units;
-      let row = 1;
-      const rows = units.map((unit) => (row = unit.row ?? row));
-      return units.map((unit, index) => ({ unit, row: rows[index] ?? 1, index }))
-        .sort((a, b) => a.row - b.row || a.index - b.index)
-        .map(({ unit, row: value }) => ({ ...unit, row: value }));
-    }
-
-    const fits = (units: Unit[]): Unit[][] | undefined => {
-      const lines = breakLines(units, room, navSpace.gap, navSpace.pad, single);
-      return lines.length <= rowLimit && lines.every((line) => lineWidth(line, navSpace.gap, navSpace.pad) <= room + .5) ? lines : undefined;
-    };
-
-    const fixed = flow.filter((button) => button.getAttribute('data-navbar-overflow') === 'never');
-    const visible = flow.filter((button) => (widthFor.get(button) ?? 0) > 0);
-    const movable = visible.filter((button) => !fixed.includes(button));
-    const limit = visibleLimit();
-    const counts = new Map<HTMLElement, number>();
-    const count = (button: NavbarItem): void => {
-      const home = homeOf(button);
-      counts.set(home, (counts.get(home) ?? 0) + 1);
-    };
-    visible.filter((button) => fixed.includes(button) && button !== collapseToggle).forEach(count);
-    const fixedCount = visible.length - movable.length - (visible.some((item) => item === collapseToggle) ? 1 : 0);
-    // The persistent rows get first choice of the shared budget. Keep More itself in reading order.
-    const priority = collapseOptions && multi && layout === 'rows'
-      ? movable.map((button) => ({ button, row: priorityOf(button) }))
-        .sort((a, b) => b.row - a.row).map(({ button }) => button)
-      : movable;
-    function priorityOf(button: NavbarItem): number {
-      const home = homeOf(button);
-      const unit = home === nav ? button : home;
-      const row = rowOf(unit) ?? 1;
-      return isCollapsedUnit(unit, row) ? -1 : row;
-    }
-    const candidates = priority.filter((button) => {
-      const home = homeOf(button);
-      const cap = home.dataset.navbarMaxVisible;
-      if (home !== nav && cap?.trim() && (counts.get(home) ?? 0) >= Number(cap)) return false;
-      count(button);
-      return true;
-    }).slice(0, Math.max(0, limit - fixedCount));
-    // Collapsing hides the rows themselves. Items already reached through More keep that entry point.
-    const retained = new Set(collapsed && more ? buttonsIn(more.host).filter((button) => {
-      const home = homeOf(button);
-      return (widthFor.get(button) ?? 0) === 0 && isCollapsedUnit(home === nav ? button : home)
-        && !home.hidden && !button.hidden && !(button.hasAttribute('data-navbar-hide-icon')
-          && button.hasAttribute('data-navbar-hide-label')) && !fixed.includes(button);
-    }) : []);
-    const inactive = flow.filter((button) => !visible.includes(button) && !retained.has(button));
-    const keepWith = (items: NavbarItem[]) => new Set([...inactive, ...fixed, ...items]);
-    let kept = new Set(flow);
-    let moreHost: HTMLElement | undefined;
-    let lines = fits(unitsFor(kept, undefined));
-    if (overflowActive() && (!lines || retained.size || candidates.length < movable.length)) {
-      const lastHome = [...visible].reverse().map(homeOf).find((home) => home !== nav);
-      const fallback = (collapseOptions ? lastHome : sections()[1]) ?? nav;
-      lines = undefined;
-      const remaining = [...candidates];
-      // Once More is needed, fit the visible items with its trigger included.
-      while (true) {
-        kept = keepWith(remaining);
-        const lastKept = [...visible].reverse().find((button) => kept.has(button));
-        moreHost = collapseToggle?.parentElement === nav || !isSectioned ? nav
-          : collapseToggle?.parentElement && nav.contains(collapseToggle) ? collapseToggle.parentElement
-          : lastKept ? homeOf(lastKept) : fallback;
-        if (isCollapsedUnit(moreHost)) moreHost = fallback;
-        const units = unitsFor(kept, moreHost);
-        const hasAway = retained.size > 0 || remaining.length < movable.length;
-        lines = hasAway ? fits(units) : undefined;
-        if (lines) break;
-
-        // A section wider than the whole bar can only be fixed by moving one of its own items.
-        // Keep items in other rows in place while the overflowing section is trimmed.
-        const tooWide = multi && units.find((unit) => unit.width + navSpace.pad > room + .5);
-        const remove = tooWide ? remaining.findLastIndex((button) =>
-          button === tooWide.element || homeOf(button) === tooWide.element) : remaining.length - 1;
-        if (remove < 0) {
-          if (hasAway) lines = breakLines(units, room, navSpace.gap, navSpace.pad, single);
+      for (const line of rows.values()) {
+        const padded = space.pad + space.gap * Math.max(0, line.length - 1);
+        let fixed = padded;
+        let flexible = 0;
+        for (const unit of line) {
+          const section = adjustable.get(unit.element);
+          if (!section) fixed += unit.width;
           else {
-            moreHost = undefined;
-            lines = breakLines(unitsFor(kept, undefined), room, navSpace.gap, navSpace.pad, single);
+            fixed += section.overhead;
+            flexible += section.natural * section.count;
           }
-          break;
         }
-        remaining.splice(remove, 1);
+        const ratio = flexible ? Math.min(1, Math.max(0, (room - fixed) / flexible)) : 1;
+        for (const unit of line) {
+          const section = adjustable.get(unit.element);
+          if (!section) continue;
+          const width = Math.max(1, section.natural * ratio);
+          unit.width = section.overhead + section.count * width;
+          unit.equalItemWidth = width;
+        }
       }
+      return units.sort((a, b) => (a.row ?? 1) - (b.row ?? 1));
     }
 
-    if (!moreHost && more && collapsed && collapseMoreHome && nav.contains(collapseMoreHome)) {
-      const reserved = fits(unitsFor(kept, collapseMoreHome));
-      if (reserved) {
-        moreHost = collapseMoreHome;
-        lines = reserved;
+    const fits = (units: Unit[]): boolean => {
+      const lines = breakLines(units, room, space.gap, space.pad, !multi, lockRows);
+      return lines.length <= rowLimit && lines.every((line) => lineWidth(line, space.gap, space.pad) <= room + .5);
+    };
+    const plans: { entry: More; away: NavbarItem[]; host?: HTMLElement }[] = [];
+    const arranged: Unit[] = [];
+    if (!usesOverflow) arranged.push(...unitsFor(active));
+    for (const row of rowKeys) {
+      const entry = ensureMore(row);
+      const members = perRow ? active.filter((button) => rowOfItem(button) === row) : active;
+      const home = members.at(-1) ? homeOf(members.at(-1)!) : nav;
+      if (entry.button.parentElement !== home && !entry.button.parentElement?.isConnected) home.append(entry.button);
+      if (perRow && home === nav) entry.button.dataset.navbarRow = String(row);
+      else delete entry.button.dataset.navbarRow;
+      const moreWidth = Math.max(measureMore(entry), widest);
+      const movable = members.filter((button) => button.getAttribute('data-navbar-overflow') !== 'never');
+      const candidates = collapseOptions && authoredRows && !perRow
+        ? [...movable].sort((a, b) => Number(collapsibleItem(a)) - Number(collapsibleItem(b))) : movable;
+      const limit = resolveVisibleLimit(perRow ? overflow?.rowLimits?.[row] ?? overflow?.maxVisible : overflow?.maxVisible);
+      const counts = new Map<HTMLElement, number>();
+      const kept = new Set(candidates.filter((button) => {
+        const section = homeOf(button);
+        const count = counts.get(section) ?? 0;
+        if (count >= sectionLimit(section)) return false;
+        counts.set(section, count + 1);
+        return true;
+      }).slice(0, limit));
+      const fixed = new Set(members.filter((button) => !movable.includes(button)));
+      const visible = () => members.filter((button) => fixed.has(button) || kept.has(button));
+      const collapseHome = collapseToggle?.parentElement ?? undefined;
+      const host = !perRow && collapseHome ? collapseHome : home;
+      let units: Unit[];
+      let needsMore: boolean;
+      // Fit the trigger together with the items. If a particular row is too wide,
+      // evict from that row before touching a different row.
+      while (true) {
+        needsMore = kept.size < movable.length;
+        units = unitsFor(visible(), needsMore ? entry : undefined, host, moreWidth, row);
+        if (fits(units)) break;
+        if (!needsMore && kept.size) {
+          const withTrigger = unitsFor(visible(), entry, host, moreWidth, row);
+          units = withTrigger;
+        }
+        const overfull = breakLines(units, room, space.gap, space.pad, !multi, lockRows)
+          .find((line) => lineWidth(line, space.gap, space.pad) > room + .5);
+        const offendingRow = overfull?.[0]?.row;
+        const remove = candidates.findLast((button) => kept.has(button) && (offendingRow === undefined || onRow(button) === offendingRow));
+        if (!remove) break;
+        kept.delete(remove);
       }
+      const away = movable.filter((button) => !kept.has(button));
+      arranged.push(...unitsFor(visible(), needsMore ? entry : undefined, host, moreWidth, row));
+      plans.push(needsMore ? { entry, away, host } : { entry, away });
     }
-    applyOverflow(flow, kept, moreHost);
-    if (multi) applyRows(lines ?? breakLines(unitsFor(kept, moreHost), room, navSpace.gap, navSpace.pad, false), navSpace, split);
+
+    // Restore all returning items before moving any item to its next menu.
+    for (const [button] of homes) {
+      const plan = plans.find(({ away }) => away.includes(button));
+      if (!plan || !plan.entry.host.contains(button)) restore(button);
+    }
+    hiddenUnits.forEach((unit) => unit.classList.add('lg-navbar__collapse-hidden'));
+    for (const plan of plans) applyOverflow(plan.entry, plan.away, plan.host);
+    const overflowed = flow.filter((button) => homes.has(button));
+    if (overflowed.length !== lastOverflow.length || overflowed.some((item, index) => lastOverflow[index] !== item)) {
+      lastOverflow = overflowed;
+      options.onOverflowChange?.([...overflowed]);
+    }
+    for (const { element, equalItemWidth } of arranged) {
+      if (equalItemWidth === undefined) continue;
+      equalSections.add(element);
+      element.style.setProperty('--_lg-section-equal-width', `${equalItemWidth}px`);
+    }
+    const displayed = arranged.filter(({ element, row }) => !(collapseSpring.value === 0 && isCollapsedUnit(element, row)));
+    if (multi) applyRows(breakLines(displayed, room, space.gap, space.pad, false, lockRows), space, split);
     else clearRows();
+    paintCollapse();
   }
 
-  function visibleLimit(): number {
-    const limit = overflow?.maxVisible;
+  function resolveVisibleLimit(limit: NavbarVisibleLimit | undefined): number {
     const width = window.innerWidth;
     const value = typeof limit === 'function' ? limit(width)
       : typeof limit === 'object' ? Object.entries(limit)
         .filter(([breakpoint]) => Number(breakpoint) <= width)
         .sort(([a], [b]) => Number(b) - Number(a))[0]?.[1]
       : limit;
-    return value === undefined || Number.isNaN(value) ? Infinity : Math.floor(value);
+    return value === undefined || Number.isNaN(value) ? Infinity : Math.max(0, Math.floor(value));
   }
 
-  function measureMore(): number {
-    if (!more) return 0;
-    const { button } = more;
+  function sectionLimit(section: HTMLElement): number {
+    if (section === nav) return Infinity;
+    const value = section.dataset.navbarMaxVisible?.trim();
+    if (!value) return Infinity;
+    if (!value.includes(':')) return resolveVisibleLimit(Number(value));
+    const limits: Record<number, number> = {};
+    for (const match of value.matchAll(/(?:^|\s)(\d+):(\d+|none)(?=\s|$)/g)) {
+      limits[Number(match[1])] = match[2] === 'none' ? Infinity : Number(match[2]);
+    }
+    return resolveVisibleLimit(limits);
+  }
+
+  function measureMore({ button }: More): number {
     const wasHidden = button.hidden;
-    if (!button.parentElement) (sections()[sections().length - 1] ?? nav).append(button);
     button.hidden = false;
     const cached = widths.get(button);
     const key = widthKey(button);
@@ -1070,42 +1167,27 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     return width;
   }
 
-  function applyOverflow(flow: NavbarItem[], kept: Set<NavbarItem>, moreHost: HTMLElement | undefined): void {
-    if (!more) return;
+  function applyOverflow(entry: More, away: NavbarItem[], moreHost: HTMLElement | undefined): void {
     const focused = document.activeElement;
-    const leaving = flow.filter((button) => !kept.has(button) && !more!.host.contains(button));
-    const returning = flow.filter((button) => kept.has(button) && more!.host.contains(button));
-    if (leaving.length || returning.length) sequence = [...flow];
-    for (const button of returning) restore(button);
-    for (const button of leaving) {
-      stopGlide(button);
-      homes.set(button, button.parentElement as HTMLElement);
+    const { button, host, popover } = entry;
+    for (const [index, item] of away.entries()) {
+      if (!host.contains(item)) {
+        stopGlide(item);
+        const anchor = document.createComment('navbar overflow');
+        homes.set(item, homeOf(item));
+        item.before(anchor);
+        anchors.set(item, anchor);
+        parkedItems.set(anchor, item);
+      }
+      if (host.children[index] !== item) host.insertBefore(item, host.children[index] ?? null);
     }
-    const away = flow.filter((button) => !kept.has(button));
-    // Keep the menu in reading order; only touch items whose place changes.
-    away.forEach((button, index) => {
-      if (more!.host.children[index] !== button) more!.host.insertBefore(button, more!.host.children[index] ?? null);
-    });
-    const { button } = more;
-    button.inert = away.length === 0;
-    button.classList.toggle('lg-navbar__more--reserved', Boolean(moreHost && button.inert));
-    if (!away.length && more.popover.open) more.popover.hide();
-    if (moreHost) {
-      if (button.parentElement !== moreHost || button.nextElementSibling) moreHost.append(button);
-      button.hidden = false;
-    } else {
-      button.hidden = true;
-      if (more.popover.open) more.popover.hide();
+    button.hidden = !moreHost;
+    if (moreHost && (button.parentElement !== moreHost || button.nextElementSibling)) moreHost.append(button);
+    if ((!moreHost || (collapsed && isCollapsedUnit(moreHost))) && popover.open) popover.hide();
+    if (focused instanceof HTMLElement && focused !== document.activeElement && focused.isConnected && host.contains(focused)) {
+      (popover.open ? focused : button).focus({ preventScroll: true });
     }
-    if (focused instanceof HTMLElement && focused !== document.activeElement && focused.isConnected) {
-      if (more.host.contains(focused) && !more.popover.open) button.focus({ preventScroll: true });
-      else focused.focus({ preventScroll: true });
-    }
-    more.dot.hidden = !away.some((item) => badges.has(item));
-    if (away.length !== lastOverflow.length || away.some((item, index) => lastOverflow[index] !== item)) {
-      lastOverflow = away;
-      options.onOverflowChange?.([...away]);
-    }
+    entry.dot.hidden = !away.some((item) => badges.has(item));
   }
 
   function applyRows(lines: Unit[][], space: { pad: number; gap: number }, split: boolean): void {
@@ -1184,12 +1266,16 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     paintSurfaces([direct], nav, 4);
   }
 
-  function overflowOpen(): boolean {
-    return Boolean(more?.popover.open);
+  function openOverflow({ focus = false, row }: { focus?: boolean; row?: number } = {}): void {
+    const more = row === undefined
+      ? allMore().findLast(({ button }) => isAvailable(button))
+      : moreByRow.get(row);
+    if (more) showMore(more, focus);
   }
 
-  function openOverflow({ focus = false }: { focus?: boolean } = {}): void {
-    if (!more || more.button.hidden || more.button.inert) return;
+  function showMore(more: More, focus = false): void {
+    if (!isAvailable(more.button)) return;
+    for (const entry of allMore()) if (entry !== more) entry.popover.hide();
     more.popover.show({ focus });
   }
 
@@ -1219,13 +1305,13 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
 
   function snapshot(): Map<NavbarItem, DOMRect> {
     const rects = new Map<NavbarItem, DOMRect>();
-    for (const item of items()) if (!more?.host.contains(item) && isAvailable(item)) rects.set(item, item.getBoundingClientRect());
+    for (const item of items()) if (!moreFor(item)?.host.contains(item) && isAvailable(item)) rects.set(item, item.getBoundingClientRect());
     return rects;
   }
 
   function glide(before: Map<NavbarItem, DOMRect>): void {
     for (const item of items()) {
-      if (more?.host.contains(item) || !isAvailable(item)) continue;
+      if (moreFor(item)?.host.contains(item) || !isAvailable(item)) continue;
       const now = item.getBoundingClientRect();
       const state = glides.get(item);
       const progress = state?.spring.value ?? 0;
@@ -1306,8 +1392,11 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     if (!items().includes(item)) throw new Error('The button does not belong to this navbar.');
   }
 
+  const runtimeVisibility = new WeakSet<NavbarItem>();
+
   function setItemHidden(item: NavbarItem, hidden: boolean): void {
     requireItem(item);
+    runtimeVisibility.add(item);
     if (item.hidden === hidden) return;
     if (!hidden) clearExit(item);
     const before = !reducedMotion.matches && enabled() && !gesture?.dragging && !collapseSpring.moving
@@ -1338,18 +1427,22 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
 
   let updating = false;
 
-  function update(replacement: HTMLElement, { key, animate = true }: NavbarUpdateOptions = {}): void {
+  function update(replacement: HTMLElement, settings: NavbarUpdateOptions = {}): void {
+    const { key, animate = true } = settings;
     if (signal.aborted || replacement === nav || nav.contains(replacement)) return;
     hideContextActions(false);
     const focused = document.activeElement;
     const before = animate && !reducedMotion.matches && enabled() ? snapshot() : undefined;
     const focusWasInside = focused instanceof HTMLElement && nav.contains(focused);
-    more?.popover.hide();
+    hideMore();
     restoreAll();
     clearInk();
     updating = true;
     try {
       reconcile(replacement, key, before);
+      if (settings.layout !== undefined) layout = settings.layout;
+      if (settings.maxRows !== undefined) maxRows = settings.maxRows ?? undefined;
+      if (settings.collapsible !== undefined) configureCollapse(settings.collapsible);
     } finally {
       updating = false;
     }
@@ -1357,13 +1450,13 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     if (before) glide(before);
     if (focusWasInside && focused instanceof HTMLElement) {
       const target = focused.isConnected && !focused.closest('[inert]') && focused.getClientRects().length
-        ? focused : tabs().find((item) => item.getAttribute('aria-current') === 'page') ?? collapseToggle ?? more?.button;
+        ? focused : lensTarget() ?? collapseToggle ?? allMore().at(-1)?.button;
       target?.focus({ preventScroll: true });
     }
   }
 
   function reconcile(replacement: HTMLElement, key: NavbarUpdateOptions['key'], before?: Map<NavbarItem, DOMRect>): void {
-    const old = new Set(items().filter((item) => item !== collapseToggle && item !== more?.button));
+    const old = new Set(items().filter((item) => item !== collapseToggle && !isMore(item)));
     for (const item of old) stopGlide(item);
     const oldSections = sections().slice(1);
     const adopt = replacement.ownerDocument !== document || !replacement.isConnected;
@@ -1408,7 +1501,11 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     };
     function reconcileItem(incoming: NavbarItem): NavbarItem {
       const item = match(old, incoming);
-      if (!item) return adopt ? incoming : incoming.cloneNode(true) as NavbarItem;
+      if (!item) {
+        const added = adopt ? incoming : incoming.cloneNode(true) as NavbarItem;
+        if (added.getAttribute('data-navbar-hidden') === 'false') added.hidden = false;
+        return added;
+      }
       old.delete(item);
       releaseCollapseUnit(item);
       if (generatedLabels.delete(item)) item.removeAttribute('aria-label');
@@ -1416,7 +1513,11 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       const managed = new Set(['data-lg-navbar-run']);
       if (badge) managed.add('aria-describedby');
       if (popovers.has(item)) ['aria-controls', 'aria-expanded', 'aria-haspopup'].forEach((name) => managed.add(name));
+      const explicitVisibility = incoming.getAttribute('data-navbar-hidden');
+      if (incoming.hidden || explicitVisibility === 'false') runtimeVisibility.delete(item);
+      if (runtimeVisibility.has(item)) managed.add('hidden');
       patch(item, incoming, managed);
+      if (explicitVisibility === 'false') item.hidden = false;
       const content = Array.from(item.childNodes).filter((child) => child !== badge?.badge && child !== badge?.text);
       if (content.length !== incoming.childNodes.length || content.some((child, index) =>
         !child.isEqualNode(incoming.childNodes[index]))) {
@@ -1472,11 +1573,12 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       magnifySprings.delete(item);
     }
     oldSections.forEach((section) => { releaseCollapseUnit(section); section.remove(); });
-    sequence = [];
   }
 
+  let syncing = false;
+
   function sync(immediate = false): void {
-    if (updating || signal.aborted) return;
+    if (updating || signal.aborted || syncing) return;
     const before = reflowing() && !collapseSpring.moving ? snapshot() : undefined;
     // With reflow glide on, the lens springs to its tab too instead of jumping.
     syncNow(before ? false : immediate);
@@ -1484,7 +1586,13 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   }
 
   function syncNow(immediate: boolean): void {
-    if (signal.aborted) return;
+    if (signal.aborted || syncing) return;
+    syncing = true;
+    try { paintLayout(immediate); }
+    finally { syncing = false; }
+  }
+
+  function paintLayout(immediate: boolean): void {
     // The gradual highlight only lives while the lens moves; never let it outlast the motion.
     if (ink && !spring.moving && !crossSpring.moving && !gesture?.dragging) clearInk();
     const isEnabled = enabled();
@@ -1497,7 +1605,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     paintMixed(groups.length > 0);
     const split = nav.classList.contains('lg-navbar--split');
     const glass = groups.length ? groups : split ? surfaces.filter((surface) => surface.parentElement === nav) : [nav];
-    if (more && overflowOpen()) {
+    const more = openMore();
+    if (more) {
       if (more.host.classList.contains('lg-navbar__overflow--individual')) {
         paintSurfaces(buttonsIn(more.host).map((button) => [button]), more.host, 0);
       }
@@ -1509,19 +1618,15 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     nav.classList.toggle('lg-navbar--free', freeSwipe());
     updateContrast();
     if (followCollapsePreview()) return;
-    const active = items().find((button) => button.getAttribute('aria-current') === 'page');
-    const behindMore = Boolean(active && more?.host.contains(active));
-    more?.button.toggleAttribute('data-navbar-overflow-current', behindMore);
-    const expanded = more?.host.classList.contains('lg-navbar__overflow--expand') && overflowOpen();
-    const target = active && behindMore ? (expanded && isAvailable(active) ? active : more?.button) : active && isAvailable(active) ? active : undefined;
-    if (!target || (target === more?.button && !isAvailable(target))) {
+    const target = lensTarget();
+    if (!target) {
       lens.hidden = true;
       spring.stop();
       crossSpring.stop();
       clearInk();
       return;
     }
-    placeLens(target, undefined, !immediate && isEnabled && !collapseSpring.moving);
+    placeLens(target, undefined, !immediate && isEnabled);
     const { start } = measure(target as NavbarItem);
     // A swipe that just ended hands its speed to the spring, so the lens carries on and settles.
     const velocity = releaseVelocity && performance.now() - releaseVelocity.at < 600 ? releaseVelocity.value : undefined;
@@ -1530,14 +1635,15 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       if (!gesture?.dragging) clearInk();
       spring.set(start);
     } else {
-      if (Math.abs(spring.value - start) > .5 || spring.moving) startInk();
-      spring.to(start, velocity);
+      if (Math.abs(spring.value - start) > .5 || spring.moving || crossSpring.moving) startInk();
+      if (Math.abs(spring.target - start) > .05 || (!spring.moving && Math.abs(spring.value - start) > .05)
+          || velocity !== undefined) spring.to(start, velocity);
     }
   }
 
   function freeSwipe(): boolean {
     if (vertical() || reorderMode) return false;
-    return nav.classList.contains('lg-navbar--multirow') || Boolean(more && !more.button.hidden) || popovers.size > 0;
+    return nav.classList.contains('lg-navbar--multirow') || allMore().some(({ button }) => !button.hidden) || popovers.size > 0;
   }
 
   function buttonAt(event: Event): NavbarItem | null {
@@ -1562,15 +1668,18 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   function reorder(order: readonly NavbarItem[]): void {
     if (order.length === 0) return;
     const section = order[0].parentElement;
-    const original = peers(order[0]).filter((button) => button !== more?.button);
+    const original = peers(order[0]).filter((button) => !isMore(button));
     if (!section || order.length !== original.length || new Set(order).size !== order.length ||
         order.some((button) => !original.includes(button) || !items().includes(button))) {
       throw new Error('Pass every button in one navbar section exactly once.');
     }
     const focused = document.activeElement;
-    section.append(...order);
-    if (more?.button.parentElement === section) section.append(more.button);
-    sequence = flowItems();
+    const slots = original.map((button) => {
+      const slot = document.createComment('navbar reorder');
+      button.before(slot);
+      return slot;
+    });
+    slots.forEach((slot, index) => slot.replaceWith(order[index]!));
     if ((focused instanceof HTMLButtonElement || focused instanceof HTMLAnchorElement) && order.includes(focused)) focused.focus({ preventScroll: true });
     options.onReorder?.([...order], section);
     sync(true);
@@ -1578,7 +1687,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
 
   function moveTo(button: NavbarItem, target: NavbarItem): void {
     if (button === target) return;
-    const order = peers(button).filter((peer) => peer !== more?.button);
+    const order = peers(button).filter((peer) => !isMore(peer));
     const index = order.indexOf(target);
     if (index < 0) return;
     order.splice(order.indexOf(button), 1);
@@ -1633,13 +1742,13 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   /** What a tap, a key press or the end of a swipe on an item does. */
   function activate(button: NavbarItem, { keyboard = false, swipe = false, keepOpen = false } = {}): void {
     if (button === collapseToggle) {
-      setCollapsed(!collapsed);
+      activateCollapse();
       return;
     }
-    if (more && button === more.button) {
-      if (keepOpen) openOverflow();
-      else if (overflowOpen()) more.popover.hide({ reason: 'trigger' });
-      else openOverflow({ focus: keyboard });
+    const overflowEntry = moreFor(button);
+    if (overflowEntry?.button === button) {
+      if (!keepOpen && overflowEntry.popover.open) overflowEntry.popover.hide({ reason: 'trigger' });
+      else showMore(overflowEntry, keyboard);
       return;
     }
     if (context?.back && button === context.back) {
@@ -1654,12 +1763,12 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       else popover.toggle({ focus: keyboard });
       return;
     }
-    const fromOverflow = Boolean(more?.host.contains(button));
+    const fromOverflow = overflowEntry?.host.contains(button);
     if (isAction(button)) options.onAction?.(button);
     // A link is followed like a tap: its click selects it, then the browser navigates.
     else if (swipe && button instanceof HTMLAnchorElement) button.click();
     else select(button);
-    if (fromOverflow) more?.popover.hide({ reason: 'selection', restoreFocus: keyboard });
+    if (fromOverflow) overflowEntry?.popover.hide({ reason: 'selection', restoreFocus: keyboard });
   }
 
   function blendedSize(spans: { start: number; size: number }[], position: number): number {
@@ -1683,7 +1792,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   }
 
   function candidates(): NavbarItem[] {
-    if (gesture?.draggedItem) return peers(gesture.draggedItem).filter((button) => isAvailable(button) && button !== more?.button);
+    if (gesture?.draggedItem) return peers(gesture.draggedItem).filter((button) => isAvailable(button) && !isMore(button));
     return items().filter(button => isAvailable(button) && (allowsSwipe(button) || button === collapseToggle));
   }
 
@@ -1736,8 +1845,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       ? (free ? freeTarget(candidates(), point) : closest(candidates(), eventPosition(event)))
       : undefined;
     // A swipe can preview More from its column, but committing it requires releasing on the trigger.
-    if (target && (target === more?.button || target === collapseToggle) && !near(target, point, 4)) target = undefined;
-    if (target && more?.host.contains(target) && !near(target, point, 4)) target = undefined;
+    if (target && (isMore(target) || target === collapseToggle) && !near(target, point, 4)) target = undefined;
+    if (target && moreFor(target)?.host.contains(target) && !near(target, point, 4)) target = undefined;
     gesture = undefined;
     if (dragging) releaseVelocity = { value: velocityOf(samples), at: performance.now() };
     samples = [];
@@ -1748,7 +1857,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     const committedPreview = collapseBeforePreview !== undefined && target !== undefined
       && (target === collapseToggle || (collapseBeforePreview && collapsibleItem(target) && near(target, point, 4)));
     if (collapseBeforePreview !== undefined) {
-      if (committedPreview) options.onCollapse?.(collapsed);
+      if (committedPreview) commitCollapse(collapsed);
       else {
         applyCollapse(collapseBeforePreview);
         if (target && collapsibleItem(target) && collapseBeforePreview) target = undefined;
@@ -1756,11 +1865,11 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     }
     if (target && !(committedPreview && target === collapseToggle)) {
       if (draggedItem) moveTo(draggedItem, target);
-      else activate(target, { swipe: true, keepOpen: openedOverflow && target === more?.button });
+      else activate(target, { swipe: true, keepOpen: openedOverflow?.button === target });
     }
     // More opened by sliding onto it during this swipe closes again unless the finger lifted on More or inside it.
-    if (openedOverflow && more && target !== more.button && !(target && more.host.contains(target))) {
-      more.popover.hide({ reason: 'selection' });
+    if (openedOverflow && target !== openedOverflow.button && !(target && openedOverflow.host.contains(target))) {
+      openedOverflow.popover.hide({ reason: 'selection' });
     }
     sync();
     if (heldCompact !== undefined) setCompact(heldCompact);
@@ -1783,14 +1892,13 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       free: freeSwipe(),
       dragging: false,
       draggedItem: reorderMode ? button : null,
-      openedOverflow: false,
     };
     nav.classList.add('lg-navbar--pressed');
   }, { signal });
   window.addEventListener('pointermove', (event) => {
     if (!gesture || gesture.id !== event.pointerId) return;
     let buttons = candidates();
-    const canReveal = Boolean(more && !more.button.hidden && buttons.includes(more.button));
+    const canReveal = buttons.some(isMore);
     if (buttons.length < 2 && !canReveal) return;
     if (!gesture.dragging) {
       if (gesture.free) {
@@ -1813,7 +1921,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     samples = [...samples.filter((sample) => event.timeStamp - sample.time < 100), { position, time: event.timeStamp }];
     // The lens follows the finger, its size blending between the two items it's between; past the first or last
     // item it gives like a rubber band instead of stopping dead.
-    buttons = buttons.filter((button) => !more?.host.contains(button));
+    buttons = buttons.filter((button) => !moreFor(button)?.host.contains(button));
     const spans = buttons.map(measure).sort((a, b) => a.start - b.start);
     const size = blendedSize(spans, position);
     const offset = position - size / 2;
@@ -1825,8 +1933,9 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
 
   /** The item a free swipe points at. With More open, a finger off to the side of its items means the bar. */
   function freeTarget(buttons: NavbarItem[], point: { x: number; y: number }): NavbarItem | undefined {
-    if (more && overflowOpen() && !near(more.host, point, 12)) {
-      const inBar = buttons.filter((button) => !more!.host.contains(button));
+    const more = openMore();
+    if (more && !near(more.host, point, 12)) {
+      const inBar = buttons.filter((button) => !more.host.contains(button));
       if (inBar.length) return closestTo(inBar, point);
     }
     return closestTo(buttons, point);
@@ -1872,24 +1981,26 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     }
     // Preview More when the lens reaches its column. Keep the preview while moving
     // through the gap toward the menu, and close it when the lens leaves that area.
-    const overTrigger = more && target === more.button && inColumn(more.button, point);
-    const overMenu = more && more.host.contains(target) && near(more.host, point, 12);
-    if (overTrigger && !overflowOpen()) {
-      openOverflow();
-      gesture.openedOverflow = overflowOpen();
+    const more = moreFor(target);
+    const overTrigger = more?.button === target && inColumn(target, point);
+    const opened = gesture.openedOverflow;
+    const overMenu = opened && opened.host.contains(target) && near(opened.host, point, 12);
+    if (overTrigger && !more.popover.open) {
+      showMore(more);
+      if (more.popover.open) gesture.openedOverflow = more;
       reink();
-    } else if (more && gesture.openedOverflow && overflowOpen() && !overTrigger && !overMenu) {
-      more.popover.hide({ reason: 'selection' });
+    } else if (opened?.popover.open && !overTrigger && !overMenu) {
+      opened.popover.hide({ reason: 'selection' });
       reink();
     }
     samples = [...samples.filter((sample) => event.timeStamp - sample.time < 100), { position: point.x, time: event.timeStamp }];
     items().forEach((button) => button.classList.toggle('lg-navbar__preview', button === target));
-    const inMenu = Boolean(more?.host.classList.contains('lg-navbar__overflow--menu') && more.host.contains(target));
+    const inMenu = inMoreMenu(target);
     nav.classList.toggle('lg-navbar--lens-away', inMenu);
     if (inMenu) return;
     const box = boxOf(target);
     const row = buttons.filter((button) => {
-      if (more?.host.contains(button) !== more?.host.contains(target)) return false;
+      if (moreFor(button)?.host.contains(button) !== more?.host.contains(target)) return false;
       return Math.abs(boxOf(button).top - box.top) < 4;
     });
     const spans = row.map((button) => ({ start: boxOf(button).left, size: boxOf(button).width })).sort((a, b) => a.start - b.start);
@@ -1919,10 +2030,6 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     }
     const button = buttonAt(event);
     if (!button || reorderMode) return;
-    if (button === collapseToggle) {
-      setCollapsed(!collapsed);
-      return;
-    }
     activate(button, { keyboard: event.detail === 0 });
     sync();
   }, { signal });
@@ -1932,7 +2039,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     if (!button) return;
     const direction = event.key === (vertical() ? 'ArrowUp' : 'ArrowLeft') ? -1
       : event.key === (vertical() ? 'ArrowDown' : 'ArrowRight') ? 1 : 0;
-    const available = peers(button).filter((peer) => isAvailable(peer) && peer !== more?.button);
+    const available = peers(button).filter((peer) => isAvailable(peer) && !isMore(peer));
     const target = available[available.indexOf(button) + direction];
     if (!direction || !target) return;
     event.preventDefault();
@@ -1955,7 +2062,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     nav.classList.toggle('lg-navbar--equal-truncate', equalWidth && equalOverflow === 'truncate');
     nav.classList.toggle('lg-navbar--equal-grow', equalWidth && equalOverflow === 'grow');
     if (equalWidth && equalOverflow === 'natural' && !nav.classList.contains('lg-navbar--multirow')
-        && items().some((button) => isAvailable(button) && !more?.host.contains(button) && !fits(button))) {
+        && items().some((button) => isAvailable(button) && !moreFor(button)?.host.contains(button) && !fits(button))) {
       nav.classList.remove('lg-navbar--equal');
     }
   }
@@ -2178,11 +2285,18 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
 
   // ---- Collapsible rows ----
 
-  const collapseOptions = options.collapsible === true ? {} : options.collapsible || undefined;
+  let collapseOptions = options.collapsible === true ? {} : options.collapsible || undefined;
   let collapsed = collapseOptions?.initial === 'collapsed';
+  let committedCollapsed = collapsed;
+  let collapseEndPending = false;
+  let collapsePress = false;
+  let pendingOverflow: { value: LiquidGlassNavbarOptions['overflow'] } | undefined;
+  const collapsePressSpring = createSpring(0, () => {}, {
+    response: .48, dampingRatio: 1, precision: .003,
+    onRest: () => { collapsePress = false; sync(); },
+  });
   let collapseLines: Unit[][] = [];
   let collapseToggle: HTMLElement | undefined;
-  let collapseMoreHome: HTMLElement | undefined;
   let restoreCollapseToggle: (() => void) | undefined;
   const collapseUnits = new Map<HTMLElement, { inert: boolean }>();
   let collapseGap = 0;
@@ -2192,16 +2306,59 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     if (!followCollapsePreview()) followActive(true);
   }, {
     response: .4, dampingRatio: 1, ...collapseOptions?.spring, precision: .001,
-    onRest: () => {
-      if (!collapsed) collapseMoreHome = undefined;
-      syncNow(true);
-    },
+    onRest: finishCollapse,
   });
+
+  function finishCollapse(): void {
+    crossOffset = crossOrigin();
+    crossReference = undefined;
+    if (pendingOverflow && gesture?.collapseBeforePreview === undefined) {
+      const { value } = pendingOverflow;
+      pendingOverflow = undefined;
+      replaceOverflow(value);
+    } else syncNow(reducedMotion.matches);
+    if (gesture?.collapseBeforePreview !== undefined || !collapseEndPending) return;
+    collapseEndPending = false;
+    options.onCollapseEnd?.(committedCollapsed);
+  }
+
+  let warnedCurrent: NavbarItem[] = [];
+  function currentItem(): NavbarItem | undefined {
+    const current = flowItems().filter((item) => item.getAttribute('aria-current') === 'page');
+    if (options.warnOnMultipleCurrent && current.length > 1
+        && (current.length !== warnedCurrent.length || current.some((item, index) => item !== warnedCurrent[index]))) {
+      console.warn('Liquid Glass Navbar: multiple items have aria-current="page". The highest row wins, then markup order.', nav);
+    }
+    warnedCurrent = current;
+    return current.reduce<NavbarItem | undefined>((best, item) =>
+      !best || (layout === 'rows' && rowOfItem(item) > rowOfItem(best)) ? item : best, undefined);
+  }
+
+  function lensTarget(): NavbarItem | undefined {
+    const active = currentItem();
+    const activeMore = moreFor(active);
+    for (const { button } of allMore()) button.toggleAttribute('data-navbar-overflow-current', activeMore?.button === button);
+    const opened = openMore();
+    if (opened && isAvailable(opened.button)) return opened.button;
+    const toggle = collapseToggle instanceof HTMLButtonElement || collapseToggle instanceof HTMLAnchorElement ? collapseToggle : undefined;
+    if (collapsePress && toggle && nav.contains(toggle) && isAvailable(toggle)) return toggle;
+    if (active && collapsibleItem(active) && (collapsed || !isAvailable(activeMore?.button ?? active))) {
+      const returning = activeMore?.button ?? active;
+      if (!collapsed && collapseSpring.value > .35 && returning.getClientRects().length && !returning.hidden) return returning;
+      return flowItems().find((item) => item.hasAttribute('data-navbar-collapsed-current') && !collapsibleItem(item)
+        && isAvailable(item) && !homes.has(item))
+        ?? (toggle && nav.contains(toggle) && isAvailable(toggle) ? toggle : undefined)
+        ?? (activeMore && isAvailable(activeMore.button) ? activeMore.button : undefined)
+        ?? tabs().find((item) => !collapsibleItem(item) && !homes.has(item));
+    }
+    const target = activeMore?.button ?? active;
+    return target && isAvailable(target) ? target : undefined;
+  }
 
   function followCollapsePreview(): boolean {
     if (!gesture?.dragging || gesture.collapseBeforePreview === undefined) return false;
     const preview = items().find((item) => item.classList.contains('lg-navbar__preview') && isAvailable(item));
-    if (preview && !more?.host.contains(preview)) {
+    if (preview && !moreFor(preview)?.host.contains(preview)) {
       placeLens(preview, lensSize);
       if (preview === collapseToggle) {
         const { start, size } = measure(preview);
@@ -2223,9 +2380,9 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   }
 
   function collapseElements(): HTMLElement[] {
-    const away = more ? buttonsIn(more.host).filter((item) => homes.get(item) === nav) : [];
+    const away = [...homes.keys()].filter((item) => homes.get(item) === nav);
     return [...nav.querySelectorAll<HTMLElement>(sectionSelector), ...buttonsIn(nav), ...away]
-      .filter((element) => element !== collapseToggle && element !== more?.button);
+      .filter((element) => element !== collapseToggle && !isMore(element));
   }
 
   function mainRow(): number {
@@ -2234,7 +2391,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
 
   function isCollapsedUnit(element: HTMLElement, row = rowOf(element) ?? 1, last = mainRow()): boolean {
     return Boolean(collapseOptions && multiRowActive() && layout === 'rows'
-      && element !== collapseToggle && element !== more?.button && !element.contains(collapseToggle ?? null)
+      && element !== collapseToggle && (!isMore(element) || overflow?.perRow === true) && !element.contains(collapseToggle ?? null)
       && (collapseOptions.rows?.includes(row) ?? row < last));
   }
 
@@ -2243,7 +2400,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     const last = mainRow();
     const host = [...nav.querySelectorAll<HTMLElement>(sectionSelector)].reverse()
       .find((section) => !section.hidden && (rowOf(section) ?? 1) === last) ?? nav;
-    const moreButton = more?.button.parentElement === host ? more.button : null;
+    const moreButton = allMore().find(({ button }) => button.parentElement === host)?.button ?? null;
     if (collapseToggle.parentElement !== host || (host !== nav && collapseToggle.nextElementSibling !== moreButton)) {
       host.insertBefore(collapseToggle, moreButton);
     }
@@ -2266,13 +2423,13 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   }
 
   function paintCollapse(remeasure = false): void {
-    if (!collapseOptions) return;
     const progress = Math.min(1, Math.max(0, collapseSpring.value));
     const animating = progress > 0 && progress < 1;
-    const active = multiRowActive() && layout === 'rows' && !context;
+    const active = Boolean(collapseOptions && multiRowActive() && layout === 'rows' && !context);
     const last = mainRow();
-    const units = active ? collapseElements().filter((element) =>
-      !more?.host.contains(element) && isCollapsedUnit(element, rowOf(element) ?? 1, last)) : [];
+    const units = active ? [...collapseElements(), ...allMore().filter(({ button }) => button.parentElement === nav && !button.hidden)
+      .map(({ button }) => button)].filter((element) =>
+      !moreFor(element)?.host.contains(element) && isCollapsedUnit(element, rowOf(element) ?? 1, last)) : [];
     for (const element of collapseUnits.keys()) if (!units.includes(element) || (!animating && !collapsed && progress === 1)) releaseCollapseUnit(element);
     if (!active) {
       nav.classList.remove('lg-navbar--collapsing');
@@ -2321,10 +2478,32 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
 
   function setCollapsed(value: boolean): void {
     if (!collapseOptions || signal.aborted) return;
-    const previous = gesture?.collapseBeforePreview ?? collapsed;
     if (gesture) delete gesture.collapseBeforePreview;
+    const changed = committedCollapsed !== value;
+    if (changed) collapseEndPending = true;
+    committedCollapsed = value;
     applyCollapse(value);
-    if (value !== previous) options.onCollapse?.(value);
+    if (changed) options.onCollapse?.(value);
+    if (!collapseSpring.moving) finishCollapse();
+  }
+
+  function commitCollapse(value: boolean): void {
+    if (committedCollapsed !== value) {
+      collapseEndPending = true;
+      committedCollapsed = value;
+      options.onCollapse?.(value);
+    }
+    if (!collapseSpring.moving) finishCollapse();
+  }
+
+  function activateCollapse(): void {
+    if (!reducedMotion.matches && enabled()) {
+      collapsePress = true;
+      collapsePressSpring.set(0);
+      collapsePressSpring.to(1);
+    }
+    setCollapsed(!collapsed);
+    sync();
   }
 
   function applyCollapse(value: boolean): void {
@@ -2336,24 +2515,19 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       if (unit && isCollapsedUnit(unit)) (collapseToggle ?? tabs().find((tab) =>
         !isCollapsedUnit(tab.closest<HTMLElement>('[data-navbar-section]') ?? tab)))?.focus({ preventScroll: true });
     }
-    more?.popover.hide();
-    if (value && !collapseSpring.moving) {
-      const home = more?.button.parentElement;
-      collapseMoreHome = more && home && !more.button.hidden && !more.button.inert && !isCollapsedUnit(home)
-        ? home : undefined;
-    }
     collapsed = value;
-    if (!value && reducedMotion.matches) collapseMoreHome = undefined;
+    hideMore();
     labelCollapseToggle();
     if (reducedMotion.matches || !enabled() || layout !== 'rows' || vertical()) {
       collapseSpring.set(value ? 0 : 1);
       syncNow(true);
     } else {
+      crossReference ??= navTop();
       if (!value && collapseSpring.value === 0) {
         // Reintroduce the rows at natural size for one synchronous layout, then clip to the spring value.
         for (const element of collapseUnits.keys()) releaseCollapseUnit(element);
         collapseSpring.set(.0001);
-        syncNow(true);
+        syncNow(false);
         paintCollapse(true);
       } else if (!collapseSpring.moving) paintCollapse(true);
       collapseSpring.to(value ? 0 : 1);
@@ -2366,29 +2540,32 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     if (!collapseToggle.classList.contains('lg-navbar__collapse-toggle')) return;
     const label = collapsed ? collapseOptions.showLabel ?? 'Show' : collapseOptions.hideLabel ?? 'Hide';
     collapseToggle.setAttribute('aria-label', label);
-    const [visible, sizing] = collapseToggle.querySelectorAll('[data-navbar-label]:not(.lg-navbar__ink)');
-    visible.textContent = label;
-    const copy = collapseToggle.querySelector('[data-navbar-label].lg-navbar__ink');
-    if (copy) copy.textContent = label;
-    sizing.textContent = collapsed ? collapseOptions.hideLabel ?? 'Hide' : collapseOptions.showLabel ?? 'Show';
+    const visible = collapseToggle.querySelector('[data-navbar-label]:not(.lg-navbar__collapse-sizing)');
+    if (visible) visible.textContent = label;
+    const sizing = collapseToggle.querySelector<HTMLElement>('.lg-navbar__collapse-sizing');
+    if (sizing) sizing.dataset.label = collapsed ? collapseOptions.hideLabel ?? 'Hide' : collapseOptions.showLabel ?? 'Show';
   }
 
   function mountCollapse(): void {
     if (!collapseOptions || collapseOptions.toggle === false) return;
     if (collapseOptions.toggle instanceof HTMLElement) {
       const toggle = collapseToggle = collapseOptions.toggle;
+      const toggleListeners = new AbortController();
       const attrs = ['data-navbar-action', 'data-navbar-overflow', 'aria-expanded'];
       const previous = attrs.map((name) => toggle.getAttribute(name));
-      restoreCollapseToggle = () => attrs.forEach((name, index) => {
-        const value = previous[index];
-        if (value === null) toggle.removeAttribute(name);
-        else toggle.setAttribute(name, value);
-      });
+      restoreCollapseToggle = () => {
+        toggleListeners.abort();
+        attrs.forEach((name, index) => {
+          const value = previous[index];
+          if (value === null) toggle.removeAttribute(name);
+          else toggle.setAttribute(name, value);
+        });
+      };
       toggle.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
-        setCollapsed(!collapsed);
-      }, { signal });
+        activateCollapse();
+      }, { signal: toggleListeners.signal });
     } else {
       const button = document.createElement('button');
       collapseToggle = button;
@@ -2411,6 +2588,40 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     labelCollapseToggle();
   }
 
+  function unmountCollapseToggle(): void {
+    if (collapseToggle?.hasAttribute('data-navbar-generated')) collapseToggle.remove();
+    restoreCollapseToggle?.();
+    restoreCollapseToggle = undefined;
+    collapseToggle = undefined;
+  }
+
+  function configureCollapse(next: NonNullable<LiquidGlassNavbarOptions['collapsible']>): void {
+    const previous = collapseOptions;
+    collapseOptions = next === true ? {} : next || undefined;
+    if (!previous || !collapseOptions || (previous.toggle ?? 'auto') !== (collapseOptions.toggle ?? 'auto')) {
+      unmountCollapseToggle();
+      mountCollapse();
+    }
+    const state = collapseOptions ? (previous ? committedCollapsed : collapseOptions.initial === 'collapsed') : false;
+    if (!collapseOptions || !previous) {
+      collapsed = committedCollapsed = state;
+      collapseEndPending = false;
+      collapseSpring.set(state ? 0 : 1);
+    }
+    labelCollapseToggle();
+    paintCollapse(true);
+  }
+
+  function replaceOverflow(next: LiquidGlassNavbarOptions['overflow']): void {
+    const nextOptions = overflowSettings(next);
+    if (nextOptions?.style !== overflow?.style || nextOptions?.surface !== overflow?.surface
+        || nextOptions?.trigger !== overflow?.trigger || nextOptions?.label !== overflow?.label
+        || nextOptions?.icon !== overflow?.icon || nextOptions?.moreLabel !== overflow?.moreLabel
+        || nextOptions?.boundary !== overflow?.boundary) removeMore();
+    overflow = nextOptions;
+    sync(false);
+  }
+
   // ---- Compact ----
 
   let stopScroll: (() => void) | undefined;
@@ -2424,17 +2635,22 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   }, { response: .34, dampingRatio: 1, precision: .002, onRest: (value) => finishCompact(value > .5) });
 
   function followActive(collapseFrame = false): void {
-    const active = items().find((button) => button.getAttribute('aria-current') === 'page');
-    const behindMore = active && more?.host.contains(active);
-    const target = behindMore && !(overflowOpen() && more?.host.classList.contains('lg-navbar__overflow--expand'))
-      ? more?.button : active;
+    const target = lensTarget();
     // Mid-swipe the finger owns the lens; the swipe's own end settles it.
     if (gesture?.dragging) return;
-    if (!target || !isAvailable(target)) { lens.hidden = true; return; }
-    placeLens(target);
-    // An instant move cancels any spring, so its rest never comes: the gradual highlight ends here instead.
-    if (!collapseFrame) spring.set(measure(target).start);
-    clearInk();
+    // lensTarget already vets availability; a row opening mid-spring is inert but still a valid target.
+    if (!target || !target.getClientRects().length) { lens.hidden = true; return; }
+    placeLens(target, undefined, collapseFrame && !reducedMotion.matches);
+    const start = measure(target).start;
+    if (collapseFrame && !reducedMotion.matches) {
+      if (Math.abs(start - spring.target) > .05) {
+        startInk();
+        spring.to(start);
+      }
+    } else {
+      spring.set(start);
+      clearInk();
+    }
   }
 
   function finishCompact(value: boolean): void {
@@ -2495,7 +2711,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
 
   function showContextActions(nodes: readonly HTMLElement[], contextOptions: ContextActionsOptions = {}): void {
     if (context) hideContextActions(false);
-    more?.popover.hide();
+    hideMore();
     for (const popover of popovers.values()) popover.hide();
     const focusInside = nav.contains(document.activeElement);
     const placement = contextOptions.placement ?? 'replace';
@@ -2602,7 +2818,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     else nav.setAttribute('aria-label', label);
     if (current?.isConnected) markCurrent(current);
     sync(true);
-    if (focus && focusInside) (current && isAvailable(current) ? current : more?.button ?? items().find(isAvailable))?.focus({ preventScroll: true });
+    if (focus && focusInside) (current && isAvailable(current) ? current : allMore().at(-1)?.button ?? items().find(isAvailable))?.focus({ preventScroll: true });
   }
 
   // ---- Magnify: each icon's amount (0..1) is its own spring, so passing over it rises and settles smoothly ----
@@ -2631,7 +2847,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     const range = magnify.range;
     for (const item of items()) {
       let amount = 0;
-      const inMenu = Boolean(more?.host.contains(item) && more.host.classList.contains('lg-navbar__overflow--menu'));
+      const inMenu = inMoreMenu(item);
       if (point && isAvailable(item) && !inMenu) {
         const box = boxOf(item);
         const dx = point.x - (box.left + box.width / 2);
@@ -2707,7 +2923,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     clearMagnify();
     if (collapseSpring.moving) {
       collapseSpring.set(collapsed ? 0 : 1);
-      syncNow(true);
+      finishCollapse();
     }
     if (compactSpring.moving) {
       compactSpring.stop();
@@ -2823,14 +3039,12 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       sync(true);
     },
     setOverflow(next) {
-      collapseMoreHome = undefined;
-      removeMore();
-      overflow = overflowSettings(next);
-      sync(true);
+      if (collapseSpring.moving) pendingOverflow = { value: next };
+      else replaceOverflow(next);
     },
-    get overflowItems() { return more ? buttonsIn(more.host) : []; },
+    get overflowItems() { return [...lastOverflow]; },
     openOverflow,
-    closeOverflow() { more?.popover.hide(); },
+    closeOverflow() { hideMore(); },
     setBadge,
     setCompact,
     setScrollCompact,
@@ -2887,10 +3101,12 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       listeners.abort();
       collapseSpring.stop();
       crossSpring.stop();
+      spring.stop();
       for (const element of collapseUnits.keys()) releaseCollapseUnit(element);
       nav.style.removeProperty('--_lg-collapse-progress');
-      if (collapseToggle?.classList.contains('lg-navbar__collapse-toggle')) collapseToggle.remove();
-      restoreCollapseToggle?.();
+      collapsePressSpring.stop();
+      unmountCollapseToggle();
+      removeTransition?.();
       contrastWatch?.abort();
       cancelAnimationFrame(contrastFrame);
       stopScroll?.();
@@ -2905,6 +3121,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       nav.style.removeProperty('--_lg-magnify-lift');
       removeMore();
       clearRows();
+      clearSectionWidths();
       refraction?.destroy();
       cancelAnimationFrame(resizeFrame);
       observer.disconnect();

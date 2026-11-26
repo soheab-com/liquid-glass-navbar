@@ -611,3 +611,27 @@
   grid-auto-rows: minmax(0, 1fr);
   grid-auto-columns: auto;
 }
+
+.lg-navbar__collapse-sizing::before { content: attr(data-label); }
+
+.lg-navbar:not(.lg-navbar--vertical) > [data-navbar-section][data-navbar-equal] {
+  display: grid;
+  grid-auto-columns: var(--_lg-section-equal-width, minmax(0, 1fr));
+}
+.lg-navbar:not(.lg-navbar--vertical) > [data-navbar-section][data-navbar-equal] > :is(button, a) {
+  min-width: 0;
+  padding-inline: min(10px, calc(var(--_lg-section-equal-width, 100px) / 6));
+  grid-template-columns: minmax(0, 1fr);
+}
+.lg-navbar > [data-navbar-section][data-navbar-equal] [data-navbar-label] {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The live new snapshot follows springs without a second layout animation or additive blending. */
+::view-transition-group(.lg-navbar-live) { animation: none; }
+::view-transition-image-pair(.lg-navbar-live) { isolation: auto; }
+::view-transition-old(.lg-navbar-live) { display: none; }
+::view-transition-new(.lg-navbar-live) { animation: none; mix-blend-mode: normal; opacity: 1; }
