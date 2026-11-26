@@ -19,7 +19,7 @@ npm install @soheab-com/liquid-glass-navbar
 Or install a tagged version straight from GitHub:
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.13.0'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v1.0.0'
 ```
 
 It adds about 27 kB of JavaScript (minified and gzipped) and 7.5 kB of CSS (gzipped), with no dependencies. CI fails if either grows past its budget (`npm run size`).

@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-26
+
+The first stable release, and the first published to npm.
+
+### Added
+
+- Published to npm as `@soheab-com/liquid-glass-navbar`, with compiled ESM, TypeScript declarations and `navbar.css` in `dist/`. The JavaScript no longer needs a bundler, and importing it touches no browser globals, so it is safe during server rendering.
+- `@soheab-com/liquid-glass-navbar/react` and `/vue` entry points with a `useLiquidGlassNavbar` hook and composable. React and Vue are optional peer dependencies; the core has no runtime dependencies.
+- Arrow keys move focus between the bar's items, More and the collapse chevron in screen order, Up and Down move between rows, and Home and End jump to the ends. Inside an open More menu, Up and Down move between its items. Turn this off with `keyboardNavigation: false`.
+- Alt+Arrow reordering is announced to screen readers; `reorderAnnouncement` translates the message.
+- A focus ring on bar items, coloured by `--lg-nav-focus`.
+- Increase Contrast (`prefers-contrast: more`) gives the bar a nearly opaque surface, a solid rim, a thicker lens ring and an underlined current tab.
+- Forced colours modes draw the bar, lens and selected item with system colours.
+- Firefox gets refraction: like Safari, it bends a copy of the backdrop elements marked `data-navbar-refract`.
+- `overflow.perRow` and `overflow.rowLimits` give each numbered row its own More and limit, and `openOverflow({ row })` opens a specific row's menu.
+- `data-navbar-max-visible` accepts breakpoints such as `"0:2 900:none"`.
+- `update()` accepts `layout`, `maxRows`, and `collapsible`, so the bar can change shape without remounting.
+- `onCollapseEnd` fires when a committed collapse reaches its final layout.
+- `data-navbar-collapsed-current` marks where the lens rests while the selected tab's row is collapsed.
+- `viewTransitionName` keeps the bar live during same-document View Transitions.
+- `warnOnMultipleCurrent` logs a warning when more than one item is current.
+
+### Changed
+
+- Licensed under the Mozilla Public License 2.0.
+- Engines are chosen by feature detection, apart from one isolated check for whether `backdrop-filter` draws SVG filters, which only Chromium does and no engine reports.
+- In copy mode (Safari and Firefox), a bar with no marked backdrop keeps its frosted blur instead of turning sharp and flat.
+- Section caps no longer count `data-navbar-overflow="never"` items, matching `maxVisible`.
+
+### Fixed
+
+- Alt+Arrow reordering follows the screen in right-to-left bars.
+- `destroy()` no longer leaves empty `class` and `style` attributes on the nav and its sections.
+- Collapsing a row no longer gives its overflow budget to the remaining rows.
+- Re-laying out during a collapse no longer makes items in the remaining row disappear.
+- Equal-width sections fit the available width and truncate long labels.
+- Mounting and `update()` choose the same item when more than one is current.
+- `update()` keeps visibility set with `setItemHidden()` unless the replacement sets `hidden` or `data-navbar-hidden="false"`.
+- Tapping or pressing More or the collapse chevron moves the lens to it.
+- Collapsing the row that holds the selected tab keeps the lens visible in the remaining row.
+- The collapse toggle exposes only its current label.
+
+### Performance
+
+- Rim maps are computed from one quadrant (about six times faster for large bars) and cached by size, corner radius and clearness.
+- Window resizes lay the bar out at most once per frame. Refraction work stops and moving springs settle while the page is hidden.
+
 ## [0.12.0] - 2026-11-26
 
 ### Added
@@ -239,7 +286,8 @@ All new behavior is opt-in; the single-row bar is unchanged by default.
 - Colors come from CSS variables (`--lg-nav-accent`, `--lg-nav-muted`, `--lg-nav-surface` and friends), with light and dark looks in the examples.
 - Respects Reduce Motion and Reduce Transparency.
 
-[Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.12.0...v1.0.0
 [0.12.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.11.2...v0.12.0
 [0.11.2]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.11.0...v0.11.1
