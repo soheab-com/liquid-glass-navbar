@@ -32,7 +32,7 @@ test.describe('touch', () => {
 });
 
 test('action items call onAction and keep the selection', async ({ page }) => {
-  await mount(page, tabs('One', 'Two') + '<button type="button" data-navbar-action><span data-navbar-label>Search</span></button>');
+  await mount(page, `${tabs('One', 'Two')}<button type="button" data-navbar-action><span data-navbar-label>Search</span></button>`);
   await page.getByRole('button', { name: 'Search' }).click();
   await expect(current(page)).toHaveText('One');
   expect(await calls(page, 'action')).toEqual([['action', 'Search']]);

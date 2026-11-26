@@ -95,7 +95,10 @@ export function bindHoverNavigation(
     x = event.clientX;
     y = event.clientY;
     const next = enabled() ? hit(document.elementFromPoint(x, y), dragging) : undefined;
-    if (!next) return end(true);
+    if (!next) {
+      end(true);
+      return;
+    }
     if (item === next) return;
     clearTimeout(pending);
     item = next;

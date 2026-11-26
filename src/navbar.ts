@@ -746,7 +746,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     // Restore all returning items before moving any item to its next menu.
     for (const [button] of homes) {
       const plan = plans.find(({ away }) => away.includes(button));
-      if (!plan || !plan.entry.host.contains(button)) restore(button);
+      if (!plan?.entry.host.contains(button)) restore(button);
     }
     hiddenUnits.forEach((unit) => unit.classList.add('lg-navbar__collapse-hidden'));
     for (const plan of plans) applyOverflow(plan.entry, plan.away, plan.host);
@@ -1130,7 +1130,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       widths.delete(item);
       return item;
     }
-    for (const incoming of replacement.querySelectorAll<HTMLElement>(sectionSelector + ', ' + ITEM_SELECTOR)) {
+    for (const incoming of replacement.querySelectorAll<HTMLElement>(`${sectionSelector}, ${ITEM_SELECTOR}`)) {
       if (!incoming.hasAttribute('data-navbar-section')) {
         nav.append(reconcileItem(incoming as NavbarItem));
         continue;
@@ -1587,7 +1587,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     const more = moreFor(target);
     const overTrigger = more?.button === target && inColumn(target, point);
     const opened = gesture.openedOverflow;
-    const overMenu = opened && opened.host.contains(target) && near(opened.host, point, 12);
+    const overMenu = opened?.host.contains(target) && near(opened.host, point, 12);
     if (overTrigger && !more.popover.open) {
       showMore(more);
       if (more.popover.open) gesture.openedOverflow = more;
@@ -2152,7 +2152,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   function mountCollapse(): void {
     if (!collapseOptions || collapseOptions.toggle === false) return;
     if (collapseOptions.toggle instanceof HTMLElement) {
-      const toggle = collapseToggle = collapseOptions.toggle;
+      collapseToggle = collapseOptions.toggle;
+      const toggle = collapseToggle;
       const toggleListeners = new AbortController();
       const attrs = ['data-navbar-action', 'data-navbar-overflow', 'aria-expanded'];
       const previous = attrs.map((name) => toggle.getAttribute(name));
@@ -2242,7 +2243,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     // Mid-swipe the finger owns the lens; the swipe's own end settles it.
     if (gesture?.dragging) return;
     // lensTarget already vets availability; a row opening mid-spring is inert but still a valid target.
-    if (!target || !target.getClientRects().length) { lens.hidden = true; return; }
+    if (!target?.getClientRects().length) { lens.hidden = true; return; }
     placeLens(target, undefined, collapseFrame && !reducedMotion.matches);
     const start = measure(target).start;
     if (collapseFrame && !reducedMotion.matches) {
