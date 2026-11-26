@@ -8,7 +8,11 @@ import { chromium, firefox, webkit } from 'playwright';
 const label = process.argv[2] ?? 'run';
 const url = process.env.PERF_URL ?? 'http://127.0.0.1:4173/tests/glass.html';
 const runs = Number(process.env.PERF_RUNS ?? 5);
-const engines = { chromium, firefox, webkit };
+const engines = Object.fromEntries(
+  Object.entries({ chromium, firefox, webkit }).filter(
+    ([name]) => !process.env.PERF_ENGINES || process.env.PERF_ENGINES.split(',').includes(name),
+  ),
+);
 const results = {};
 mkdirSync('perf-results', { recursive: true });
 
@@ -39,6 +43,8 @@ for (const [name, engine] of Object.entries(engines)) {
     if (tracing) await context.tracing.start({ screenshots: false, snapshots: false });
     await page.goto(url);
     await page.waitForFunction(() => document.documentElement.dataset.ready === 'true');
+    // PERF_CSS injects a stylesheet, to measure what a style costs (for example PERF_CSS='.x { filter: none }').
+    if (process.env.PERF_CSS) await page.addStyleTag({ content: process.env.PERF_CSS });
     await page.waitForTimeout(500);
     const boxes = await page.locator('#nav > button').evaluateAll((items) =>
       items.map((item) => {
