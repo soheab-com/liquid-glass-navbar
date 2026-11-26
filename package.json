@@ -1,19 +1,54 @@
 {
   "name": "@soheab-com/liquid-glass-navbar",
   "version": "0.12.0",
-  "private": true,
+  "description": "An iOS-style Liquid Glass tab bar in plain TypeScript and CSS, with a sliding lens, swipe gestures and overflow.",
+  "license": "MIT",
+  "author": "Soheab",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/soheab-com/liquid-glass-navbar.git"
+  },
+  "homepage": "https://soheab.com/navbar-builder/docs/",
+  "bugs": {
+    "url": "https://github.com/soheab-com/liquid-glass-navbar/issues"
+  },
+  "keywords": [
+    "liquid glass",
+    "liquid-glass",
+    "tab bar",
+    "tabbar",
+    "navbar",
+    "navigation",
+    "ios",
+    "glassmorphism"
+  ],
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./navbar.css": "./src/navbar.css"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./navbar.css": "./dist/navbar.css",
+    "./package.json": "./package.json"
   },
   "files": [
-    "src",
-    "README.md"
+    "dist"
   ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "check": "tsc --noEmit --strict --exactOptionalPropertyTypes --target es2024 --lib es2024,dom,dom.iterable --module esnext --moduleResolution bundler src/index.ts examples/demo.ts examples/features.ts examples/catalog.ts tests/rows-lens.ts tests/more-tap.ts tests/hover-navigation.ts",
-    "demo": "esbuild examples/demo.ts examples/features.ts examples/catalog.ts tests/rows-lens.ts tests/more-tap.ts tests/hover-navigation.ts --bundle --format=esm --outdir=. --outbase=. --servedir=. --serve=127.0.0.1:4173"
+    "check": "tsc -p tsconfig.json",
+    "demo": "esbuild examples/demo.ts examples/features.ts examples/catalog.ts tests/rows-lens.ts tests/more-tap.ts tests/hover-navigation.ts tests/catalog-rows.ts --bundle --format=esm --outdir=. --outbase=. --servedir=. --serve=127.0.0.1:4173",
+    "build": "node scripts/build.mjs",
+    "test:ssr": "node tests/ssr.mjs",
+    "prepack": "npm run build"
   },
   "devDependencies": {
     "esbuild": "0.28.1",

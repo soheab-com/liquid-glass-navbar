@@ -12,13 +12,24 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 
 ## Install
 
-It isn't on npm. Install it from GitHub:
-
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.12.0'
+npm install @soheab-com/liquid-glass-navbar
 ```
 
-You need a bundler (Vite, esbuild, webpack and so on), because the package ships TypeScript and CSS.
+Or install a tagged version straight from GitHub:
+
+```sh
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.13.0'
+```
+
+The package ships compiled ES modules with TypeScript declarations, so the JavaScript works without a bundler. Importing it is safe during server rendering: it only touches the DOM when you mount a navbar. You still need to load the stylesheet, either through your bundler (`import '@soheab-com/liquid-glass-navbar/navbar.css'`) or with a `<link>`:
+
+```html
+<link rel="stylesheet" href="/node_modules/@soheab-com/liquid-glass-navbar/dist/navbar.css">
+<script type="module">
+  import { mountLiquidGlassNavbar } from '/node_modules/@soheab-com/liquid-glass-navbar/dist/index.js';
+</script>
+```
 
 ## Quick start
 

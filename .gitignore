@@ -5,3 +5,5 @@ examples/catalog.js
 tests/rows-lens.js
 tests/more-tap.js
 tests/hover-navigation.js
+tests/catalog-rows.js
+dist/
