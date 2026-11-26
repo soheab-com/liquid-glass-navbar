@@ -413,11 +413,24 @@ export function mountRefraction(nav: HTMLElement, mode: RefractionMode, chosen?:
     if (!checking) checking = requestAnimationFrame(checkBehind);
   }
 
+  // While the page is hidden nothing is drawn, so skip the work and catch up once it is visible again.
+  let stale = false;
   function schedule(): void {
+    if (document.hidden) { stale = true; return; }
     if (!pending) pending = requestAnimationFrame(paint);
     scheduleAlign();
     scheduleCheck();
   }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      cancelAnimationFrame(pending); cancelAnimationFrame(aligning); cancelAnimationFrame(checking);
+      if (pending || aligning || checking) stale = true;
+      pending = aligning = checking = 0;
+    } else if (stale) {
+      stale = false;
+      schedule();
+    }
+  }, { signal: listeners.signal });
 
   async function buildCopyFilter(layer: RefractionLayer, map: string, width: number, height: number, scale: number): Promise<void> {
     // feImage loads data URLs asynchronously and WebKit caches whatever the filter drew while the map was missing,
