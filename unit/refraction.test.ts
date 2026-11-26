@@ -18,6 +18,60 @@ describe('rimShape', () => {
   });
 });
 
+// The straightforward per-pixel version the optimised one must match exactly.
+function reference(width: number, height: number, corner: number, clear: boolean): Uint8ClampedArray {
+  const data = new Uint8ClampedArray(width * height * 4);
+  const radius = Math.max(4, Math.min(corner, width / 2, height / 2));
+  const { rim, scale, bevel } = rimShape(radius, clear);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const dx = x + 0.5 - width / 2;
+      const dy = y + 0.5 - height / 2;
+      const nx = Math.sign(dx) * Math.max(0, Math.abs(dx) - (width / 2 - radius));
+      const ny = Math.sign(dy) * Math.max(0, Math.abs(dy) - (height / 2 - radius));
+      const length = Math.hypot(nx, ny);
+      let outward: number;
+      if (bevel) {
+        const depth = Math.min(rim, Math.max(0, radius - length));
+        outward = depth - rim * (depth / rim) ** 4;
+      } else {
+        const edge = Math.min(1, Math.max(0, (length - radius + rim) / rim));
+        outward = (-(1 - Math.sqrt(1 - edge * edge)) * scale) / 2;
+      }
+      const unit = (outward * 255) / scale / (length || 1);
+      const index = (y * width + x) * 4;
+      data[index] = Math.min(255, Math.max(0, 128 + nx * unit));
+      data[index + 1] = Math.min(255, Math.max(0, 128 + ny * unit));
+      data[index + 2] = 128;
+      data[index + 3] = 255;
+    }
+  }
+  return data;
+}
+
+describe('rimPixels matches the per-pixel reference exactly', () => {
+  for (const [width, height, corner] of [
+    [64, 56, 28],
+    [65, 57, 28],
+    [420, 58, 29],
+    [421, 59, 30],
+    [420, 180, 24],
+    [9, 9, 4],
+    [8, 30, 4],
+    [300, 41, 999],
+  ] as const) {
+    for (const clear of [true, false]) {
+      it(`${width}x${height} r${corner} ${clear ? 'clear' : 'tinted'}`, () => {
+        expect(
+          Buffer.from(rimPixels(width, height, corner, clear)).equals(
+            Buffer.from(reference(width, height, corner, clear)),
+          ),
+        ).toBe(true);
+      });
+    }
+  }
+});
+
 describe('rimPixels', () => {
   for (const clear of [true, false]) {
     it(`${clear ? 'clear' : 'tinted'}: neutral centre, symmetric edges, opaque`, () => {

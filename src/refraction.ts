@@ -37,13 +37,39 @@ export function rimPixels(width: number, height: number, corner: number, clear: 
   const data = new Uint8ClampedArray(width * height * 4);
   const radius = Math.max(4, Math.min(corner, width / 2, height / 2));
   const { rim, scale, bevel } = rimShape(radius, clear);
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
+  // The map is symmetric about both axes, so only the top-left quadrant is computed and mirrored: pixel centres sit
+  // on exact halves, so a mirrored pixel's offsets are exactly the negated ones and its value is bit-identical.
+  // Between the rounded ends the offset along x is zero, so each row's middle is one value repeated.
+  const half = (offset: number, flat: number) => Math.sign(offset) * Math.max(0, Math.abs(offset) - flat);
+  const flatX = width / 2 - radius;
+  const flatY = height / 2 - radius;
+  // The first column whose centre lies in the flat middle (|dx| <= flatX).
+  const middleStart = Math.max(0, Math.ceil(radius - 0.5));
+  const put = (x: number, y: number, r: number, g: number) => {
+    const index = (y * width + x) * 4;
+    data[index] = r;
+    data[index + 1] = g;
+    data[index + 2] = 128;
+    data[index + 3] = 255;
+  };
+  for (let y = 0; y < Math.ceil(height / 2); y++) {
+    const dy = y + 0.5 - height / 2;
+    const ny = half(dy, flatY);
+    const mirrorY = height - 1 - y;
+    for (let x = 0; x < Math.ceil(width / 2); x++) {
+      // Inside the flat middle every column matches the first one there: copy it rather than recompute.
+      if (x > middleStart) {
+        const from = (y * width + middleStart) * 4;
+        const fromMirror = (mirrorY * width + middleStart) * 4;
+        put(x, y, data[from]!, data[from + 1]!);
+        put(width - 1 - x, y, data[from]!, data[from + 1]!);
+        put(x, mirrorY, data[fromMirror]!, data[fromMirror + 1]!);
+        put(width - 1 - x, mirrorY, data[fromMirror]!, data[fromMirror + 1]!);
+        continue;
+      }
       const dx = x + 0.5 - width / 2;
-      const dy = y + 0.5 - height / 2;
       // Measure from the nearest point on the pill's centerline.
-      const nx = Math.sign(dx) * Math.max(0, Math.abs(dx) - (width / 2 - radius));
-      const ny = Math.sign(dy) * Math.max(0, Math.abs(dy) - (height / 2 - radius));
+      const nx = half(dx, flatX);
       const length = Math.hypot(nx, ny);
       // Pixels the backdrop is pulled outward along the outline's normal (negative pulls inward).
       let outward: number;
@@ -57,11 +83,13 @@ export function rimPixels(width: number, height: number, corner: number, clear: 
         outward = (-(1 - Math.sqrt(1 - edge * edge)) * scale) / 2;
       }
       const unit = (outward * 255) / scale / (length || 1);
-      const index = (y * width + x) * 4;
-      data[index] = Math.min(255, Math.max(0, 128 + nx * unit));
-      data[index + 1] = Math.min(255, Math.max(0, 128 + ny * unit));
-      data[index + 2] = 128;
-      data[index + 3] = 255;
+      const px = nx * unit;
+      const py = ny * unit;
+      const clamp = (value: number) => Math.min(255, Math.max(0, value));
+      put(x, y, clamp(128 + px), clamp(128 + py));
+      put(width - 1 - x, y, clamp(128 - px), clamp(128 + py));
+      put(x, mirrorY, clamp(128 + px), clamp(128 - py));
+      put(width - 1 - x, mirrorY, clamp(128 - px), clamp(128 - py));
     }
   }
   return data;
