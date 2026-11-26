@@ -635,3 +635,52 @@
 ::view-transition-image-pair(.lg-navbar-live) { isolation: auto; }
 ::view-transition-old(.lg-navbar-live) { display: none; }
 ::view-transition-new(.lg-navbar-live) { animation: none; mix-blend-mode: normal; opacity: 1; }
+
+/* Increase Contrast: an almost opaque surface, a solid rim, a stronger lens ring and full-strength labels. */
+@media (prefers-contrast: more) {
+  .lg-navbar--enabled {
+    --lg-nav-tint: 1;
+    --lg-nav-rim: color-mix(in srgb, currentColor 55%, transparent);
+    --lg-nav-surface: var(--lg-nav-opaque, rgb(245 249 255 / .97));
+    --lg-nav-muted: currentColor;
+  }
+  .lg-navbar--enabled .lg-navbar__lens:not([hidden]) { --_lg-lens-rim-width: 2px; }
+  .lg-navbar--enabled :is(button, a)[aria-current="page"] [data-navbar-label] { text-decoration: underline 2px; text-underline-offset: 3px; }
+}
+
+/* Forced colours (Windows High Contrast and similar): the system palette replaces every colour, and backgrounds and
+   shadows are dropped, so glass, tint and lens fill would vanish. Draw the bar and the lens with system colours. */
+@media (forced-colors: active) {
+  .lg-navbar--enabled:not(.lg-navbar--sectioned)::before,
+  .lg-navbar--enabled > [data-navbar-section]::before,
+  .lg-navbar--enabled .lg-navbar__surface::before,
+  .lg-navbar--enabled .lg-navbar__overflow--shared::before {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .lg-navbar--enabled .lg-navbar__lens:not([hidden]) {
+    forced-color-adjust: none;
+    background: Highlight;
+    box-shadow: none;
+    border: 2px solid CanvasText;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .lg-navbar--enabled {
+    --lg-nav-accent: HighlightText;
+    --lg-nav-icon-accent: HighlightText;
+    --lg-nav-label-accent: HighlightText;
+    --lg-nav-on-dark-accent: HighlightText;
+  }
+  .lg-navbar--enabled :is(button, a):is([aria-current="page"], .lg-navbar__preview),
+  .lg-navbar--enabled :is(button, a):is([aria-current="page"], .lg-navbar__preview) :is([data-navbar-label], [data-navbar-icon]) {
+    forced-color-adjust: none;
+    color: HighlightText;
+    text-shadow: none;
+    filter: none;
+  }
+  .lg-navbar__ink { display: none; }
+  .lg-navbar--enabled :is(button, a):focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+}
