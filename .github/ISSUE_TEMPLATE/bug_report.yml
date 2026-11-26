@@ -1,0 +1,41 @@
+name: Bug report
+description: Something in the navbar doesn't work as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: The nav markup and the mountLiquidGlassNavbar options, or a link to a page that shows it.
+      render: html
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: 0.13.0
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and OS
+      placeholder: Safari 26 on iOS 26.1
+    validations:
+      required: true
+  - type: checkboxes
+    id: settings
+    attributes:
+      label: Accessibility settings
+      options:
+        - label: Reduce Motion is on
+        - label: Reduce Transparency is on
+        - label: Increase Contrast or a forced-colors mode is on

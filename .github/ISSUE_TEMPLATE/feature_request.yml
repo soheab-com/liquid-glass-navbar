@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest a new option, method or behaviour.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you're trying to do
+      description: The app behaviour you want, and what the navbar can't do today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API
+      description: Options, methods or attributes you'd expect. Additions only; existing API doesn't change.
