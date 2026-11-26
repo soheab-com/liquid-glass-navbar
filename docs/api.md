@@ -1,6 +1,6 @@
 # Liquid Glass Navbar API index
 
-Start with the [README quick start](../README.md#quick-start) for installation, example markup, and a mount call. Install from a Git tag and bundle the package's TypeScript and CSS. When integrating a pinned version, read the types at that tag.
+Start with the [README quick start](../README.md#quick-start) for installation, example markup, and a mount call. Install from npm (or a Git tag). The package ships compiled ESM with declarations, so the JavaScript needs no bundler; load `navbar.css` yourself. When integrating a pinned version, read the types at that tag.
 
 ```ts
 import { mountLiquidGlassNavbar } from '@soheab-com/liquid-glass-navbar';
@@ -11,8 +11,8 @@ Supply a nav element containing buttons or `<a href="…">` items. Mark the star
 
 | Task | Start here |
 | --- | --- |
-| Configure a navbar | `LiquidGlassNavbarOptions` in [src/index.ts](../src/index.ts) and the [options reference](https://soheab.com/navbar-builder/docs/#options) |
-| Update an existing instance | `LiquidGlassNavbar` in [src/index.ts](../src/index.ts) and the [methods reference](https://soheab.com/navbar-builder/docs/#methods) |
+| Configure a navbar | `LiquidGlassNavbarOptions` in [src/types.ts](../src/types.ts) and the [options reference](https://soheab.com/navbar-builder/docs/#options) |
+| Update an existing instance | `LiquidGlassNavbar` in [src/types.ts](../src/types.ts) and the [methods reference](https://soheab.com/navbar-builder/docs/#methods) |
 | Set selection programmatically | `navbar.select(item)` updates selection without firing `onSelect` |
 | Collapse numbered rows | `collapsible`, `setCollapsed(value)`, `collapsed`, `onCollapse`, `onCollapseEnd`, `onResize`, `data-navbar-collapsed-current` |
 | Hide or reconcile content | `setItemHidden(item, hidden)`, `update(replacementNav, options)` (including `layout`, `maxRows`, `collapsible`), `data-navbar-key`, `warnOnMultipleCurrent` |

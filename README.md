@@ -98,7 +98,7 @@ mountLiquidGlassNavbar(nav, {
 });
 ```
 
-`delay` defaults to zero in milliseconds. Set `keep: true` to leave the page at the previewed position, or `swipe: false` to preview only with a hovering pointer. Add `data-navbar-no-hover` to opt an item or section out. For button tabs or custom destinations, supply `onPreview(item)` and optionally `onPreviewEnd()` to manage your own preview. The built-in behavior only scrolls to IDs in the current document. Give two bars the same `group` value to preview and select across them in one swipe. Try the [hover navigation example](http://127.0.0.1:4173/tests/hover-navigation.html) with the demo server running.
+`delay` defaults to zero in milliseconds. Set `keep: true` to leave the page at the previewed position, or `swipe: false` to preview only with a hovering pointer. Add `data-navbar-no-hover` to opt an item or section out. For button tabs or custom destinations, supply `onPreview(item)` and optionally `onPreviewEnd()` to manage your own preview. The built-in behavior only scrolls to IDs in the current document. Give two bars the same `group` value to preview and select across them in one swipe. Try it in the [hosted docs](https://soheab.com/navbar-builder/docs/#hover-navigation), or locally in [tests/hover-navigation.html](tests/hover-navigation.html) with `npm run demo` running.
 
 ## Multi-row navigation
 
