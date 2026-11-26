@@ -12,3 +12,5 @@ test-results/
 playwright-report/
 tests/glass.js
 perf-results/
+tests/react.js
+tests/vue.js

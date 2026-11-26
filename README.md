@@ -22,7 +22,7 @@ Or install a tagged version straight from GitHub:
 npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.13.0'
 ```
 
-It adds about 26 kB of JavaScript and 7 kB of CSS, minified and gzipped, with no dependencies. CI fails if either grows past its budget (`npm run size`).
+It adds about 26 kB of JavaScript (minified and gzipped) and 7.4 kB of CSS (gzipped), with no dependencies. CI fails if either grows past its budget (`npm run size`).
 
 The package ships compiled ES modules with TypeScript declarations, so the JavaScript works without a bundler. Importing it is safe during server rendering: it only touches the DOM when you mount a navbar. You still need to load the stylesheet, either through your bundler (`import '@soheab-com/liquid-glass-navbar/navbar.css'`) or with a `<link>`:
 
@@ -158,6 +158,48 @@ const navbar = mountLiquidGlassNavbar(document.querySelector('#catalog')!, {
 - **Content updates.** Call `navbar.update(replacementNav, { key, animate })` with a detached or parsed nav containing the new items and sections. The mounted nav and its attributes stay in place. New items are moved from detached replacement markup, preserving their listeners. Use a stable `data-navbar-key`, an ID, or a custom `key(element)` function to retain nodes when their link or label changes. Numbered sections fall back to their row number, links to their literal `href`, and unkeyed nodes to matching markup. Supply unique keys for repeated destinations or multiple sections in the same row. Use `aria-current="page"` in the replacement to choose the next tab. The lens glides to it, new items rise in, and removed items fade out. Pass `animate: false` for an immediate update. Application-level selection callbacks still fire only on activation. The update options also accept `layout`, `maxRows`, and `collapsible`, so a page that needs an extra row or different collapsible rows can glide to it without remounting. Visibility set with `setItemHidden()` carries over to the matching keyed item unless the replacement overrides it: `hidden` hides the item and `data-navbar-hidden="false"` shows it.
 - **Current item.** When more than one item has `aria-current="page"`, mounting, `sync()`, and `update()` all choose the item in the highest-numbered row, then the first in markup order. Set `warnOnMultipleCurrent: true` in development builds to log a warning when this happens.
 - **View Transitions.** Pass `viewTransitionName: 'site-navigation'` to give the bar a unique `view-transition-name`. The navbar injects styles that show only the live new snapshot, without fading or additive blending. Its own springs keep running while `document.startViewTransition()` cross-fades the rest of the page. The name and styles are removed in `destroy()`.
+
+## React and Vue
+
+Optional bindings mount the bar on a `<nav>` you render and destroy it on unmount. They add about 1 kB each, and React and Vue stay your own dependencies.
+
+```tsx
+import { useRef } from 'react';
+import { useLiquidGlassNavbar } from '@soheab-com/liquid-glass-navbar/react';
+import '@soheab-com/liquid-glass-navbar/navbar.css';
+
+function Tabs({ onOpen }: { onOpen: (tab: string) => void }) {
+  const ref = useRef<HTMLElement>(null);
+  const navbar = useLiquidGlassNavbar(ref, {
+    position: 'bottom',
+    onSelect: (item) => onOpen(item.dataset.tab!),
+  });
+  return (
+    <nav ref={ref} aria-label="Main">
+      <button type="button" data-tab="home" aria-current="page"><span data-navbar-label>Home</span></button>
+      <button type="button" data-tab="search"><span data-navbar-label>Search</span></button>
+    </nav>
+  );
+}
+```
+
+```ts
+// Vue: in <script setup>, with <nav ref="nav"> in the template.
+import { ref } from 'vue';
+import { useLiquidGlassNavbar } from '@soheab-com/liquid-glass-navbar/vue';
+
+const nav = ref<HTMLElement>();
+const navbar = useLiquidGlassNavbar(nav, () => ({ position: 'bottom', onSelect: (item) => open(item) }));
+```
+
+Options are read when the bar mounts. Callbacks always call the latest version, so they can use current props and state. To change anything else later, call methods on the returned instance (`navbar.setColors(…)`, `navbar.update(…)`); it is `null` (React) or `undefined` (Vue) until the bar has mounted. Let the navbar own the selection: re-rendering the `<nav>`'s children from React or Vue state would fight it, so use `navbar.select()` or `navbar.update()` to change them.
+
+## Right-to-left and accessibility settings
+
+- **Right-to-left.** In a `dir="rtl"` page or nav, tabs run right to left, a swipe selects the tab under the finger, the rubber band stretches past either visual end, and More sits at the visual end.
+- **Reduce Motion** swaps springs for immediate changes. **Reduce Transparency** turns off blur and refraction.
+- **Increase Contrast** (`prefers-contrast: more`) makes the surface nearly opaque, draws a solid rim and a thicker lens ring, uses full-strength labels, and underlines the current tab's label.
+- **Forced colours** (Windows High Contrast and similar) draws the bar with system colours: a `CanvasText` outline, a `Highlight` lens and `HighlightText` for the selected item.
 
 ## Browser support
 

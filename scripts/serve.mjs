@@ -14,12 +14,20 @@ const ctx = await context({
     'tests/catalog-rows.ts',
     'tests/fixture.ts',
     'tests/glass.ts',
+    'tests/react.ts',
+    'tests/vue.ts',
   ],
   bundle: true,
   format: 'esm',
   outdir: '.',
   outbase: '.',
   write: false,
+  define: {
+    'process.env.NODE_ENV': '"development"',
+    __VUE_OPTIONS_API__: 'true',
+    __VUE_PROD_DEVTOOLS__: 'false',
+    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false',
+  },
 });
 const { port: actual } = await ctx.serve({ servedir: '.', host: '127.0.0.1', port });
 console.log(`Serving http://127.0.0.1:${actual}/`);

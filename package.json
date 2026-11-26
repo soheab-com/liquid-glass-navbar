@@ -20,7 +20,9 @@
     "navbar",
     "navigation",
     "ios",
-    "glassmorphism"
+    "glassmorphism",
+    "react",
+    "vue"
   ],
   "type": "module",
   "main": "./dist/index.js",
@@ -30,6 +32,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./vue": {
+      "types": "./dist/vue.d.ts",
+      "import": "./dist/vue.js"
     },
     "./navbar.css": "./dist/navbar.css",
     "./package.json": "./package.json"
@@ -42,6 +52,18 @@
   ],
   "engines": {
     "node": ">=18"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "vue": ">=3.3"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
   },
   "scripts": {
     "check": "tsc -p tsconfig.json",
@@ -62,11 +84,16 @@
     "@playwright/test": "^1.64.1",
     "@size-limit/preset-small-lib": "^14.3.0",
     "@types/node": "^22.20.7",
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
     "axe-core": "^4.14.1",
     "esbuild": "0.28.1",
     "jsdom": "^31.0.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "size-limit": "^14.3.0",
     "typescript": "5.9.3",
-    "vitest": "^5.1.2"
+    "vitest": "^5.1.2",
+    "vue": "^3.5.46"
   }
 }
