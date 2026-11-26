@@ -24,6 +24,8 @@ npm run test:ssr    # the built package imports in plain Node
 npm run size        # bundle-size budget
 ```
 
+`npm run test:visual` compares screenshots of the glass states per browser. Rendering differs between machines, so it isn't part of CI; run it before and after visual changes and update the baselines with `npm run test:visual -- --update-snapshots` when a change is intended.
+
 CI runs the same steps. If WebKit can't start on Linux because of missing system libraries, point `PW_WEBKIT_PATH` at a launcher that sets them up, or run the other two projects with `npx playwright test --project=chromium --project=firefox`.
 
 ## What to keep in mind

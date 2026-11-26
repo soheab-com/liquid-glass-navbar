@@ -77,7 +77,8 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "check:links": "node scripts/check-links.mjs",
-    "size": "size-limit"
+    "size": "size-limit",
+    "test:visual": "playwright test -c playwright.visual.config.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.9",
