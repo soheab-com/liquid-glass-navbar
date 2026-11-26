@@ -8,6 +8,10 @@ export interface BackdropSignal {
 }
 
 export interface ContrastOptions {
+  /** Icon edge and busy-backdrop halo. Defaults to true. */
+  halo?: boolean;
+  /** Label edge and busy-backdrop glow. Defaults to true. */
+  glow?: boolean;
   /**
    * Content regions to watch: a selector or a function returning elements. Defaults to `[data-navbar-backdrop]`.
    * A region's `data-navbar-backdrop` lists its traits: `dark`, `light` and/or `busy`.

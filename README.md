@@ -15,7 +15,7 @@ A glass tab bar for the web, in the style of iOS. You write the buttons, it adds
 It isn't on npm. Install it from GitHub:
 
 ```sh
-npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.10.0'
+npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.11.0'
 ```
 
 You need a bundler (Vite, esbuild, webpack and so on), because the package ships TypeScript and CSS.
@@ -77,6 +77,60 @@ Everything is explained, with live examples, in the [docs](https://soheab.com/na
 [HTML attributes](https://soheab.com/navbar-builder/docs/#attributes) and
 [CSS variables](https://soheab.com/navbar-builder/docs/#css).
 
+## Multi-row navigation
+
+Open the [catalog demo](examples/catalog.html) after starting the demo server. The bar has a filter row, an equal-width preset row and a main row. Try the chevron, the theme and accent controls, switching catalogs, and resizing across 900 px.
+
+Use `layout: 'rows'` and put `data-navbar-row="1"`, `data-navbar-row="2"`, and so on on sections or on direct items. Sections are direct children marked with `data-navbar-section`.
+
+```html
+<nav id="catalog" aria-label="Catalog">
+  <div data-navbar-section data-navbar-row="1" data-navbar-max-visible="2">
+    <!-- Filter items -->
+  </div>
+  <div data-navbar-section data-navbar-row="2" data-navbar-equal>
+    <!-- Equal-width preset items -->
+  </div>
+  <div data-navbar-section data-navbar-row="3">
+    <!-- Main tabs and actions -->
+  </div>
+</nav>
+```
+
+```ts
+const navbar = mountLiquidGlassNavbar(document.querySelector('#catalog')!, {
+  position: 'bottom',
+  layout: 'rows',
+  collapsible: {
+    rows: [1, 2],
+    initial: localStorage.getItem('catalog-collapsed') === 'true' ? 'collapsed' : 'open',
+    hideLabel: 'Hide',
+    showLabel: 'Show',
+  },
+  onCollapse(collapsed) {
+    localStorage.setItem('catalog-collapsed', String(collapsed));
+  },
+  onResize({ height }) {
+    document.body.style.setProperty('--navigation-space', `${height}px`);
+  },
+  overflow: { moreLabel: false, maxVisible: { 0: 4, 900: 12 } },
+  lens: { style: 'tinted' },
+  colors: { selected: 'color-mix(in srgb, var(--accent) 78%, var(--text))' },
+  contrast: { halo: false, glow: false },
+  scrollCompact: { threshold: 24 },
+  animations: true,
+});
+```
+
+- **Collapse state.** `collapsible: true` collapses the numbered rows above the last numbered row. Pass `rows` to choose which rows collapse. `initial` defaults to `'open'`. The default `toggle: 'auto'` adds an accessible chevron in the final row and keeps it out of More. Pass an interactive `HTMLElement` for a custom control with its own accessible name, or `false` to drive collapse yourself. Read `navbar.collapsed` for the target state and call `navbar.setCollapsed(value)` to change it. `onCollapse` fires when the target changes, including programmatic changes. Use `spring: { response, dampingRatio }` to tune the motion. Reduce Motion applies the target immediately. During a swipe, moving the lens onto the chevron previews the opposite state. Swipe away to restore the rows, or release on the chevron to commit the change. Releasing on a newly revealed tab selects it and keeps its row open. Collapse and scroll compact have independent state. Items already in More from a collapsed row remain available through More while that row is hidden.
+- **First layout.** The lens uses the selected item’s layout coordinates as numbered rows settle, including while items glide. Mount the bar normally and call `sync()` for application-driven markup changes.
+- **Resize.** `onResize({ width, height })` reports the navbar’s border-box size on initial layout and when it changes, including during a collapse spring. For a bottom-fixed bar or a bar inside a bottom-anchored container, the bottom row stays vertically anchored.
+- **Items and sections.** `navbar.setItemHidden(item, true)` removes an item from layout and More, while retaining its DOM node and selection. Pass `false` to show it. Neighbours spring to their new positions. Add `data-navbar-equal` to a section for equal widths within that section.
+- **Overflow.** `moreLabel: false` hides the visual More label while preserving its accessible name. `maxVisible` accepts a number, a map of minimum viewport widths to limits, or a function of viewport width. With overflow enabled, `data-navbar-max-visible="2"` caps a section at two items. Pinned items count toward the cap and stay visible even if they exceed it. Swipe the lens onto More to preview its menu. Swipe away to close the preview, or release on More to leave it open. More and the automatic collapse toggle are excluded from the visible-item limit. Collapsible bars give persistent rows first choice of the shared limit, so opening a row above the main tabs doesn’t bump those tabs into More.
+- **Lens appearance.** Use `lens: { style: 'glass' | 'tinted' | 'outline', accent }` at mount or call `navbar.setLens(options)` to change it live. By default the lens uses a softened version of the selected icon color, with a translucent fill and a clearer rim. A lens accent overrides that color independently. Pass a CSS color expression, or set `--lg-nav-lens-accent` in your stylesheet. Use `background` or `radius` to customize the fill or shape. Set `blur` in pixels for the drag backdrop, and use `pressScale` and `dragScale` for zoom. Each scale accepts a number or an `[x, y]` pair. Reduce Motion disables lens zoom, and Reduce Transparency disables lens backdrop blur. `setLens()` restores the stylesheet defaults.
+- **Colors and contrast.** `setColors()` accepts CSS color expressions in the navbar’s style scope, including `var()` and `color-mix()`. Resting colors follow the cascade automatically. If the theme changes during a gesture or lens glide, call `refreshColors()` to rebuild the active color overlays. `contrast: { halo: false, glow: false }` disables the icon and label effects independently. Both default to enabled.
+- **Content updates.** Call `navbar.update(replacementNav, { key, animate })` with a detached or parsed nav containing the new items and sections. The mounted nav and its attributes stay in place. New items are moved from detached replacement markup, preserving their listeners. Use a stable `data-navbar-key`, an ID, or a custom `key(element)` function to retain nodes when their link or label changes. Numbered sections fall back to their row number, links to their literal `href`, and unkeyed nodes to matching markup. Supply unique keys for repeated destinations or multiple sections in the same row. Use `aria-current="page"` in the replacement to choose the next tab. The lens glides to it, new items rise in, and removed items fade out. Pass `animate: false` for an immediate update. Application-level selection callbacks still fire only on activation.
+
 ## Code map
 
 - [Local API index](docs/api.md) — integration, public types, and instance methods. The hosted docs also have a [plain-text index](https://soheab.com/navbar-builder/docs/llms.txt).
@@ -95,7 +149,7 @@ npm run check
 npm run demo
 ```
 
-Open `http://127.0.0.1:4173/examples/` and play with the controls. The code is in [examples/demo.ts](examples/demo.ts).
+Open [the demo](http://127.0.0.1:4173/examples/) or [the multi-row catalog](http://127.0.0.1:4173/examples/catalog.html). The [first-layout lens regression](http://127.0.0.1:4173/tests/rows-lens.html) displays its result in the browser.
 
 ## Changelog
 

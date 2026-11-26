@@ -14,6 +14,13 @@ Supply a nav element containing buttons or `<a href="…">` items. Mark the star
 | Configure a navbar | `LiquidGlassNavbarOptions` in [src/index.ts](../src/index.ts) and the [options reference](https://soheab.com/navbar-builder/docs/#options) |
 | Update an existing instance | `LiquidGlassNavbar` in [src/index.ts](../src/index.ts) and the [methods reference](https://soheab.com/navbar-builder/docs/#methods) |
 | Set selection programmatically | `navbar.select(item)` updates selection without firing `onSelect` |
+| Collapse numbered rows | `collapsible`, `setCollapsed(value)`, `collapsed`, `onCollapse`, `onResize` |
+| Hide or reconcile content | `setItemHidden(item, hidden)`, `update(replacementNav, options)`, `data-navbar-key` |
+| Size and limit a section | `data-navbar-equal`, `data-navbar-max-visible`, `NavbarVisibleLimit` |
+| Style the lens | `lens`, `setLens(options)`, `NavbarLensOptions`, and `NavbarLensStyle` |
+| Refresh inherited colors | `setColors(colors)`, `refreshColors()`, `ContrastOptions.halo` and `ContrastOptions.glow` |
 | Unmount | Call `navbar.destroy()` when disposing of the instance |
 | Configure markup or styling | [HTML attributes](https://soheab.com/navbar-builder/docs/#attributes), [CSS variables](https://soheab.com/navbar-builder/docs/#css), and [src/navbar.css](../src/navbar.css) |
 | See full examples | [Configurable demo](../examples/demo.ts) and [feature examples](../examples/features.ts) |
+
+See the [multi-row integration guide](../README.md#multi-row-navigation) for typed configuration examples and the catalog demo.

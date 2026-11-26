@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-26
+
+### Added
+
+- Collapsible numbered rows with a retargetable chevron spring, independent scroll compact state, and a size callback.
+- Whole-item visibility, keyed navbar updates, section-scoped equal widths and overflow caps, viewport-based overflow limits, and icon-only More.
+- CSS color refresh during lens motion, with independent icon halo and label glow controls.
+- Configurable lens style, accent, background, radius, drag blur, and press and drag zoom. The lens can derive its accent from the selected icon.
+- Swipe the lens onto the collapse chevron or More to preview the change, then release to commit it.
+
+### Fixed
+
+- The multi-row lens targets stable layout coordinates during first layout and reflow.
+- Collapsing keeps existing More entries reachable. Opening upper rows prioritizes the persistent tabs when space is tight.
+- Page scrolling stays available beside animated rows, and the lens overlay stays aligned with the collapse chevron.
+
 ## [0.10.0] - 2026-11-23
 
 ### Added
@@ -198,7 +214,8 @@ All new behavior is opt-in; the single-row bar is unchanged by default.
 - Colors come from CSS variables (`--lg-nav-accent`, `--lg-nav-muted`, `--lg-nav-surface` and friends), with light and dark looks in the examples.
 - Respects Reduce Motion and Reduce Transparency.
 
-[Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.7.0...v0.8.0

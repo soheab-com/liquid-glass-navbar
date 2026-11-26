@@ -1,0 +1,64 @@
+:root {
+  color-scheme: light dark;
+  --accent: #6066ee;
+  --text: light-dark(#1a1b31, #f1edff);
+  --muted: light-dark(#515574, #c4bfd9);
+  --line: light-dark(#3f409125, #c8bcff35);
+  --catalog-space: 220px;
+}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  color: var(--text);
+  background: light-dark(#f6f5fd, #141326);
+  padding: 0 1rem calc(var(--catalog-space) + 28px);
+  font: 16px/1.5 system-ui, sans-serif;
+}
+main { max-width: 56rem; margin: auto; }
+header { padding: clamp(2rem, 7vw, 6rem) 0 1.5rem; }
+header a { color: inherit; font-size: .875rem; text-underline-offset: .25em; }
+h1 { font-size: clamp(2.25rem, 8vw, 5rem); line-height: 1; letter-spacing: -.065em; margin: .65em 0 .25em; }
+p { color: var(--muted); max-width: 53ch; }
+fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .6rem;
+  padding: .85rem;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+}
+legend { padding: 0 .35rem; font-weight: 600; }
+fieldset label { display: flex; align-items: center; gap: .5rem; }
+fieldset :is(button, label) {
+  min-height: 2.75rem;
+  padding: .35rem .65rem;
+  color: inherit;
+  background: light-dark(#fff, #201e38);
+  border: 1px solid var(--line);
+  border-radius: .65rem;
+  font: inherit;
+}
+fieldset button, input, select { cursor: pointer; }
+fieldset input[type="color"] { width: 2rem; height: 1.5rem; padding: 0; border: 0; background: none; }
+fieldset .range input { width: clamp(4rem, 22vw, 8rem); min-width: 0; }
+fieldset output { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; }
+.instructions { font-size: .9rem; }
+.catalog { margin: 2.5rem 0; }
+.catalog h2 { margin-bottom: .65rem; }
+.catalog ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: .75rem; padding: 0; list-style: none; }
+.catalog li { padding: 1rem; min-height: 6rem; border: 1px solid var(--line); border-radius: .8rem; background: light-dark(#fff, #201e38); }
+.catalog small { display: block; margin-top: .35rem; color: var(--muted); }
+.dock { position: fixed; inset: auto 8px max(12px, env(safe-area-inset-bottom)); z-index: 1; display: grid; justify-items: center; pointer-events: none; }
+.dock nav {
+  pointer-events: auto;
+  --lg-nav-muted: var(--muted);
+  --lg-nav-opaque: light-dark(#fff, #211e38);
+  --lg-nav-surface: light-dark(#f9f7ffdb, #262137de);
+  --lg-nav-on-dark-surface: #262137de;
+  --lg-nav-highlight: light-dark(#fff, #b3a5ed62);
+  --lg-nav-rim: light-dark(#aaa4d26b, #c5b3ff44);
+}

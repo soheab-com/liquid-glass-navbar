@@ -69,33 +69,57 @@
   left: 0;
   z-index: 1;
   pointer-events: none;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--lg-nav-highlight, white) calc(45% * var(--lg-nav-tint, .4)), transparent);
-  box-shadow: inset 0 1px 0 var(--lg-nav-highlight, rgb(255 255 255 / .9)), inset 0 0 0 1px var(--lg-nav-rim, rgb(255 255 255 / .7)), 0 2px 6px var(--lg-nav-shadow, rgb(22 37 56 / .24));
+  --_lg-lens-icon-color: var(--lg-nav-icon-accent, var(--lg-nav-accent, #2152a5));
+  --_lg-lens-accent: var(--lg-nav-lens-accent, color-mix(in oklab, var(--_lg-lens-icon-color) 85%, white));
+  --_lg-lens-rim: var(--lg-nav-lens-accent, color-mix(in oklab, var(--_lg-lens-icon-color) 75%, var(--lg-nav-highlight, white)));
+  --_lg-lens-drag-rim: var(--lg-nav-lens-accent, color-mix(in oklab, var(--_lg-lens-icon-color) 70%, white));
+  border-radius: var(--lg-nav-lens-radius, 999px);
+  background: var(--lg-nav-lens-background, var(--_lg-lens-fill,
+    color-mix(in srgb, var(--_lg-lens-accent) calc(45% * var(--lg-nav-tint, .4)), transparent)));
+  box-shadow: inset 0 1px 0 var(--lg-nav-highlight, rgb(255 255 255 / .9)), inset 0 0 0 var(--_lg-lens-rim-width, 1px) var(--_lg-lens-rim), 0 2px 6px var(--lg-nav-shadow, rgb(22 37 56 / .24));
   transition: scale .32s var(--lg-nav-spring, cubic-bezier(.2, 1.4, .4, 1)), box-shadow .2s var(--lg-nav-ease, ease);
 }
 .lg-navbar--enabled.lg-navbar--pressed .lg-navbar__lens {
-  scale: 1.08 1.05;
-  box-shadow: inset 0 1px 0 var(--lg-nav-highlight, rgb(255 255 255 / .9)), inset 0 0 0 1px var(--lg-nav-rim, rgb(255 255 255 / .7)), 0 6px 16px var(--lg-nav-shadow, rgb(22 37 56 / .24));
+  scale: var(--lg-nav-lens-press-scale, 1.08 1.05);
+  box-shadow: inset 0 1px 0 var(--lg-nav-highlight, rgb(255 255 255 / .9)), inset 0 0 0 var(--_lg-lens-rim-width, 1px) var(--_lg-lens-rim), 0 6px 16px var(--lg-nav-shadow, rgb(22 37 56 / .24));
 }
 .lg-navbar--enabled.lg-navbar--dragging .lg-navbar__lens {
   /* iOS: while dragged, the lens swells past the bar into a clear bubble with a faint rainbow rim. */
-  scale: 1.22 1.38;
-  background:
+  scale: var(--lg-nav-lens-drag-scale, 1.22 1.38);
+  background: var(--lg-nav-lens-background, var(--_lg-lens-fill,
     radial-gradient(120% 90% at 50% 0%, rgb(255 255 255 / .22), transparent 60%),
-    color-mix(in srgb, var(--lg-nav-surface, rgb(245 249 255 / .78)) 18%, transparent);
+    color-mix(in srgb, var(--_lg-lens-accent) 18%, transparent)));
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / .85),
-    inset 0 0 0 1px rgb(255 255 255 / .45),
+    inset 0 0 0 var(--_lg-lens-rim-width, 1px) var(--_lg-lens-drag-rim),
     inset 2px 0 3px -1px rgb(255 60 170 / .45),
     inset -2px 0 3px -1px rgb(40 200 255 / .5),
     inset 0 -2px 3px -1px rgb(120 255 190 / .35),
     0 8px 22px var(--lg-nav-shadow, rgb(22 37 56 / .24));
-  -webkit-backdrop-filter: blur(1.5px) saturate(1.6) brightness(1.08);
-  backdrop-filter: blur(1.5px) saturate(1.6) brightness(1.08);
+  -webkit-backdrop-filter: blur(var(--lg-nav-lens-blur, 1.5px)) saturate(1.6) brightness(1.08);
+  backdrop-filter: blur(var(--lg-nav-lens-blur, 1.5px)) saturate(1.6) brightness(1.08);
+}
+.lg-navbar--enabled[data-lg-navbar-backdrop="dark"] .lg-navbar__lens:not([hidden]) {
+  --_lg-lens-icon-color: var(--lg-nav-icon-accent, var(--lg-nav-on-dark-accent, var(--lg-nav-accent, #a9d1ff)));
+}
+.lg-navbar__lens[data-navbar-lens="tinted"] {
+  --_lg-lens-fill: color-mix(in srgb, var(--_lg-lens-accent) 27%, transparent);
+}
+.lg-navbar__lens[data-navbar-lens="outline"] {
+  --_lg-lens-fill: transparent;
+  --_lg-lens-rim-width: 2px;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .lg-navbar--enabled.lg-navbar--dragging .lg-navbar__lens {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .lg-navbar__lens[data-navbar-lens="tinted"] {
+    --_lg-lens-fill: color-mix(in srgb, var(--_lg-lens-accent) 24%, var(--lg-nav-tint-surface, var(--lg-nav-opaque, #f5f9ff)));
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .lg-navbar--enabled .lg-navbar__lens { scale: 1; transition: none; }
+  .lg-navbar--enabled .lg-navbar__lens:not([hidden]) { scale: 1; transition: none; }
 }
 
 :where(.lg-navbar) {
@@ -165,7 +189,7 @@
   backdrop-filter: var(--lg-nav-refraction-filter, none);
 }
 .lg-navbar--clear.lg-navbar--enabled .lg-navbar__lens:not([hidden]) {
-  background: none;
+  background: var(--lg-nav-lens-background, var(--_lg-lens-fill, none));
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
@@ -173,7 +197,8 @@
 /* Equal width: every item takes the widest item's size, so the lens is the same everywhere. The script drops the
    class when a label would no longer fit (setEqualWidth). */
 .lg-navbar--equal:not(.lg-navbar--sectioned),
-.lg-navbar--equal > [data-navbar-section] {
+.lg-navbar--equal > [data-navbar-section],
+.lg-navbar > [data-navbar-section][data-navbar-equal] {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
@@ -254,6 +279,12 @@
   width: var(--_lg-rows-width, max-content);
   max-width: none;
 }
+/* The widest row sets the navbar box. Let gestures beside shorter rows reach the page. */
+.lg-navbar.lg-navbar--enabled.lg-navbar--multirow { pointer-events: none; }
+.lg-navbar--enabled.lg-navbar--multirow > :is(button, a, .lg-popover),
+.lg-navbar--enabled.lg-navbar--multirow > [data-navbar-section] > :is(button, a) {
+  pointer-events: auto;
+}
 .lg-navbar--multirow > .lg-navbar__break { flex-basis: 100%; height: 0; }
 .lg-navbar.lg-navbar--enabled.lg-navbar--wrap:not(.lg-navbar--sectioned) {
   padding: 6px;
@@ -277,12 +308,6 @@
   width: var(--_lg-equal-width, auto);
 }
 .lg-navbar--equal.lg-navbar--multirow > [data-navbar-section] { display: flex; }
-@media (prefers-reduced-motion: no-preference) {
-  .lg-navbar--multirow .lg-navbar__lens:not([hidden]),
-  .lg-navbar--free .lg-navbar__lens:not([hidden]) {
-    transition: scale .32s var(--lg-nav-spring, cubic-bezier(.2, 1.4, .4, 1)), box-shadow .2s var(--lg-nav-ease, ease), top .14s ease-out, height .14s ease-out;
-  }
-}
 /* Gestures that move between rows need vertical movement too. */
 .lg-navbar--enabled.lg-navbar--free { touch-action: none; }
 .lg-navbar--lens-away .lg-navbar__lens { visibility: hidden; }
@@ -426,10 +451,9 @@
   overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
 
-/* Compact: icons only. Compact-capable bars skip effects that leave a stale copy of the glyph in Safari while
-   the tabs resize. */
+/* Skip icon filters while the tabs resize to avoid stale glyphs in Safari. */
 .lg-navbar--compact :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *):has([data-navbar-icon]):not([data-navbar-hide-icon]) [data-navbar-label] { display: none; }
-.lg-navbar--compactable.lg-navbar--enabled :is(button, a) [data-navbar-icon] { filter: none; }
+.lg-navbar--compacting.lg-navbar--enabled :is(button, a) [data-navbar-icon] { filter: none; }
 
 /* Context actions replace the navigation until the app leaves context mode. */
 .lg-navbar--context > :not([data-navbar-context], .lg-navbar__lens, .lg-navbar__refraction-assets) { display: none !important; }
@@ -442,23 +466,23 @@
 
 /* Adaptive contrast: a readable foreground over dark content, also with clear glass. */
 .lg-navbar--enabled[data-lg-navbar-backdrop="dark"] :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) {
-  color: var(--lg-nav-on-dark-color, #f3f8ff);
-  --_lg-item-icon: var(--lg-nav-on-dark-color, #f3f8ff);
-  --_lg-item-label: var(--lg-nav-on-dark-color, #f3f8ff);
+  color: var(--lg-nav-on-dark-color, var(--lg-nav-muted, #f3f8ff));
+  --_lg-item-icon: var(--lg-nav-icon-color, inherit);
+  --_lg-item-label: var(--lg-nav-label-color, inherit);
 }
 .lg-navbar--enabled[data-lg-navbar-backdrop="dark"]:not(.lg-navbar--dragging) :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *)[aria-current="page"],
 .lg-navbar--enabled[data-lg-navbar-backdrop="dark"] :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *).lg-navbar__preview,
 .lg-navbar--enabled[data-lg-navbar-backdrop="dark"] .lg-navbar__more[data-navbar-overflow-current] {
-  color: var(--lg-nav-on-dark-accent, #a9d1ff);
-  --_lg-item-icon: var(--lg-nav-on-dark-accent, #a9d1ff);
-  --_lg-item-label: var(--lg-nav-on-dark-accent, #a9d1ff);
+  color: var(--lg-nav-on-dark-accent, var(--lg-nav-accent, #a9d1ff));
+  --_lg-item-icon: var(--lg-nav-icon-accent, inherit);
+  --_lg-item-label: var(--lg-nav-label-accent, inherit);
 }
 .lg-navbar--enabled[data-lg-navbar-backdrop="dark"] {
   --lg-nav-rim: var(--lg-nav-on-dark-rim, rgb(255 255 255 / .4));
   --lg-nav-highlight: var(--lg-nav-on-dark-highlight, rgb(255 255 255 / .45));
   --lg-nav-tint-surface: var(--lg-nav-on-dark-surface, #263a52);
 }
-.lg-navbar--enabled[data-lg-navbar-backdrop="light"] :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *) {
+.lg-navbar--enabled[data-lg-navbar-backdrop="light"] :is(button, a):where(.lg-navbar > *, .lg-navbar > [data-navbar-section] > *, .lg-navbar__overflow--expand > *):not([aria-current="page"], .lg-navbar__preview, [data-navbar-overflow-current]) {
   color: var(--lg-nav-on-light-color, var(--lg-nav-muted, inherit));
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -543,4 +567,45 @@
   .lg-navbar--enabled > [data-navbar-section]::before,
   .lg-navbar--enabled .lg-navbar__surface::before,
   .lg-navbar--enabled .lg-navbar__overflow--shared::before { transition: border-color .35s ease, box-shadow .35s ease; }
+}
+
+/* Collapsible rows keep their inline size while the spring clips their block size. */
+.lg-navbar.lg-navbar--multirow.lg-navbar--enabled.lg-navbar--collapsing { row-gap: 0; }
+.lg-navbar .lg-navbar__collapse-unit {
+  box-sizing: border-box;
+  min-height: 0 !important;
+  max-height: calc(var(--_lg-collapse-height, 0px) * var(--_lg-collapse-progress));
+  padding-block: calc(var(--_lg-collapse-padding, 0px) * var(--_lg-collapse-progress));
+  overflow: clip;
+  opacity: var(--_lg-collapse-progress);
+  transform: translate(
+    calc(var(--_lg-collapse-x, 0px) * (1 - var(--_lg-collapse-progress))),
+    calc(var(--_lg-collapse-y, 0px) * (1 - var(--_lg-collapse-progress)))
+  ) scaleX(calc(.25 + .75 * var(--_lg-collapse-progress)));
+}
+.lg-navbar .lg-navbar__collapse-hidden,
+.lg-navbar > [data-navbar-section][hidden] { display: none !important; }
+/* Only the real glyphs occupy grid cells. The lens copies use button-relative coordinates. */
+.lg-navbar__collapse-toggle [data-navbar-icon]:not(.lg-navbar__ink) { grid-area: 1 / 1; }
+.lg-navbar__collapse-toggle [data-navbar-icon] > path {
+  /* Rotate the glyph inside its icon box. Magnify anchors the outer SVG to the edge of the bar. */
+  transform-origin: center;
+  rotate: calc(180deg * (1 - var(--_lg-collapse-progress, 1)));
+}
+
+.lg-navbar.lg-navbar--no-glow :is(button, a),
+.lg-navbar.lg-navbar--no-glow :is(button, a) [data-navbar-label] { text-shadow: none; }
+.lg-navbar.lg-navbar--no-halo :is(button, a) :is([data-navbar-icon], svg) { filter: none; }
+
+.lg-navbar__collapse-toggle [data-navbar-label] { text-align: center; }
+.lg-navbar__collapse-toggle [data-navbar-label]:not(.lg-navbar__ink) {
+  grid-area: 2 / 1;
+  justify-self: stretch;
+}
+.lg-navbar__collapse-toggle .lg-navbar__collapse-sizing,
+.lg-navbar__more--reserved { visibility: hidden; }
+.lg-navbar--vertical > [data-navbar-section][data-navbar-equal] {
+  grid-auto-flow: row;
+  grid-auto-rows: minmax(0, 1fr);
+  grid-auto-columns: auto;
 }

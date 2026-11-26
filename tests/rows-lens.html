@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rows lens regression</title>
+<link rel="stylesheet" href="../src/navbar.css">
+<style>
+  #dock { width: var(--room, 280px); }
+  nav { max-width: 100%; }
+  nav button { width: 100px; }
+</style>
+<div id="dock">
+  <nav aria-label="Rows">
+    <div data-navbar-section data-navbar-row="1"><button>Overview</button></div>
+    <div data-navbar-section data-navbar-row="2"><button aria-current="page">Catalog</button></div>
+    <div data-navbar-section data-navbar-row="3"><button>Loading filters</button></div>
+  </nav>
+</div>
+<output id="result">Running</output>
+<script type="module" src="./rows-lens.js"></script>
+</html>
