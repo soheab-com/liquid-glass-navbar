@@ -82,3 +82,61 @@ test('refreshColors repaints the lens ink with the current theme mid-gesture', a
   expect((await inkColours()).join()).toContain('rgb(0, 128, 0)');
   await page.mouse.up();
 });
+
+test('setBadge shows a count with screen-reader text, and removing it restores the item', async ({ page }) => {
+  await mount(page, tabs('One', 'Two'), {}, 'aria-label="Test"');
+  const two = page.locator('[data-navbar-key="two"]');
+  await two.evaluate((item) => item.setAttribute('aria-describedby', 'own-hint'));
+  await page.evaluate(() =>
+    (window as unknown as { bar: { setBadge(item: Element, badge: unknown): void } }).bar.setBadge(
+      document.querySelector('[data-navbar-key="two"]')!,
+      { count: 120, max: 99, label: '120 unread' },
+    ),
+  );
+  await expect(two.locator('.lg-navbar__badge')).toHaveText('99+');
+  await expect(two).toHaveAccessibleDescription(/120 unread/);
+  expect(await two.getAttribute('aria-describedby')).toMatch(/^own-hint lg-navbar-badge-\d+$/);
+  await page.evaluate(() =>
+    (window as unknown as { bar: { setBadge(item: Element, badge: unknown): void } }).bar.setBadge(
+      document.querySelector('[data-navbar-key="two"]')!,
+      null,
+    ),
+  );
+  await expect(two.locator('.lg-navbar__badge')).toHaveCount(0);
+  expect(await two.getAttribute('aria-describedby')).toBe('own-hint');
+});
+
+test('setTransparency, setContrast and setBackdrop drive the tint and backdrop tone', async ({ page }) => {
+  await mount(page, tabs('One', 'Two'));
+  const nav = page.locator('#nav');
+  type Tint = {
+    setTransparency(value?: number): void;
+    setContrast(value?: unknown): void;
+    setBackdrop(value?: unknown): void;
+  };
+  await page.evaluate(() => (window as unknown as { bar: Tint }).bar.setTransparency(25));
+  expect(await nav.evaluate((element) => (element as HTMLElement).style.getPropertyValue('--lg-nav-tint'))).toBe(
+    '0.75',
+  );
+  await expect(nav).toHaveClass(/lg-navbar--custom-tint/);
+  expect(
+    await page.evaluate(() => {
+      try {
+        (window as unknown as { bar: Tint }).bar.setTransparency(140);
+        return '';
+      } catch (error) {
+        return (error as Error).name;
+      }
+    }),
+  ).toBe('RangeError');
+  await page.evaluate(() => (window as unknown as { bar: Tint }).bar.setBackdrop({ tone: 'dark', busy: true }));
+  await expect(nav).toHaveAttribute('data-lg-navbar-backdrop', 'dark');
+  await expect(nav).toHaveClass(/lg-navbar--busy/);
+  await page.evaluate(() => (window as unknown as { bar: Tint }).bar.setBackdrop());
+  await expect(nav).not.toHaveAttribute('data-lg-navbar-backdrop');
+  await page.evaluate(() => (window as unknown as { bar: Tint }).bar.setContrast({ halo: false, glow: false }));
+  await expect(nav).toHaveClass(/lg-navbar--no-halo/);
+  await expect(nav).toHaveClass(/lg-navbar--no-glow/);
+  await page.evaluate(() => (window as unknown as { bar: Tint }).bar.setTransparency());
+  expect(await nav.evaluate((element) => (element as HTMLElement).style.getPropertyValue('--lg-nav-tint'))).toBe('');
+});

@@ -1,7 +1,9 @@
 // The navbar itself: one closure per mounted bar, holding its state, gestures, layout and cleanup.
 
+import { createBackdropTint } from './backdrop-tint.js';
+import { createBadges } from './badges.js';
 import { type ScrollCompactOptions, watchScrollDirection } from './compact.js';
-import { type BackdropSignal, type ContrastOptions, readBackdrop } from './contrast.js';
+import { createContextActions } from './context-actions.js';
 import {
   allowsSwipe,
   buttonsIn,
@@ -26,14 +28,12 @@ import { mountRefraction, refractionMode } from './refraction.js';
 import { createSpring, rubberBanded, type Spring } from './spring.js';
 import type {
   Box,
-  ContextActionsOptions,
   EqualWidthOverflow,
   Gesture,
   LiquidGlassNavbar,
   LiquidGlassNavbarOptions,
   More,
   NavbarAnimations,
-  NavbarBadge,
   NavbarColors,
   NavbarItem,
   NavbarLayout,
@@ -47,8 +47,6 @@ import type {
 } from './types.js';
 import { defaultKey, findKeyedMatch } from './update.js';
 import { mountViewTransition } from './view-transition.js';
-
-let badgeSequence = 0;
 
 export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNavbarOptions): LiquidGlassNavbar {
   const listeners = new AbortController();
@@ -72,6 +70,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     mode && (mode !== 'copy' || options.refractionSources !== false)
       ? mountRefraction(nav, mode, options.refractionSources || undefined)
       : undefined;
+  const tint = createBackdropTint(nav, disposer, refraction);
+  const badges = createBadges(() => motionOn('badges'));
 
   let placement = options.position;
   let reorderMode = false;
@@ -82,25 +82,12 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   let maxRows = options.maxRows;
   let overflow = overflowSettings(options.overflow);
   let compact = false;
-  interface ContextState {
-    /** What was inserted into the bar (generated pills, your sections, or your items). */
-    inserted: HTMLElement[];
-    /** Your own nodes, and what to restore on them. */
-    restore: { node: HTMLElement; className: string; style: string | null }[];
-    current: NavbarItem | undefined;
-    label: string | null;
-    replace: boolean;
-    hidden: HTMLElement | undefined;
-    back: HTMLButtonElement | undefined;
-    onBack: (() => void) | undefined;
-  }
-  let context: ContextState | undefined;
   const generatedLabels = new Set<NavbarItem>();
   const popovers = new Map<NavbarItem, AnchoredPopover>();
-  const badges = new Map<NavbarItem, { badge: HTMLElement; text: HTMLElement; describedBy: string | null }>();
   const enabled = options.enabled ?? (() => true);
   const vertical = (): boolean => placement === 'left' || placement === 'right';
-  const inContext = (element: Element): boolean => !context?.replace || Boolean(element.closest(`[${CONTEXT}]`));
+  const inContext = (element: Element): boolean =>
+    !contextActions.state?.replace || Boolean(element.closest(`[${CONTEXT}]`));
   const sections = (): HTMLElement[] =>
     [nav, ...nav.querySelectorAll<HTMLElement>(sectionSelector)].filter(
       (section) => section === nav || inContext(section),
@@ -672,7 +659,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
 
   /** Measure and plan the expanded rows even when some are collapsed. Only their rendering changes. */
   function layoutPass(): void {
-    if (context) return;
+    if (contextActions.state) return;
     const multi = multiRowActive();
     const authoredRows =
       multi && layout === 'rows' && collapseElements().some((element) => rowOf(element) !== undefined);
@@ -922,7 +909,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     ) {
       (popover.open ? focused : button).focus({ preventScroll: true });
     }
-    entry.dot.hidden = !away.some((item) => badges.has(item));
+    entry.dot.hidden = !away.some((item) => badges.entries.has(item));
   }
 
   function applyRows(lines: Unit[][], space: { pad: number; gap: number }, split: boolean): void {
@@ -1206,7 +1193,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   function update(replacement: HTMLElement, settings: NavbarUpdateOptions = {}): void {
     const { key, animate = true } = settings;
     if (signal.aborted || replacement === nav || nav.contains(replacement)) return;
-    hideContextActions(false);
+    contextActions.hide(false);
     const focused = document.activeElement;
     const before = animate && !reducedMotion.matches && enabled() ? snapshot() : undefined;
     const focusWasInside = focused instanceof HTMLElement && nav.contains(focused);
@@ -1292,7 +1279,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       old.delete(item);
       releaseCollapseUnit(item);
       if (generatedLabels.delete(item)) item.removeAttribute('aria-label');
-      const badge = badges.get(item);
+      const badge = badges.entries.get(item);
       const managed = new Set(['data-lg-navbar-run']);
       if (badge) managed.add('aria-describedby');
       if (popovers.has(item)) ['aria-controls', 'aria-expanded', 'aria-haspopup'].forEach((name) => managed.add(name));
@@ -1340,13 +1327,13 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     for (const item of old) {
       fadeOut(item, before?.get(item));
       popovers.get(item)?.destroy();
-      const badge = badges.get(item);
+      const badge = badges.entries.get(item);
       if (badge) {
         badge.badge.remove();
         badge.text.remove();
         if (badge.describedBy === null) item.removeAttribute('aria-describedby');
         else item.setAttribute('aria-describedby', badge.describedBy);
-        badges.delete(item);
+        badges.forget(item);
       }
       if (generatedLabels.delete(item)) item.removeAttribute('aria-label');
       releaseCollapseUnit(item);
@@ -1412,7 +1399,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     refraction?.sync(isEnabled ? glass : []);
     fitEqualWidth();
     nav.classList.toggle('lg-navbar--free', freeSwipe());
-    updateContrast();
+    tint.update();
     if (followCollapsePreview()) return;
     const target = lensTarget();
     if (!target) {
@@ -1569,9 +1556,10 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       else showMore(overflowEntry, keyboard);
       return;
     }
+    const context = contextActions.state;
     if (context?.back && button === context.back) {
       const { onBack } = context;
-      hideContextActions(keyboard);
+      contextActions.hide(keyboard);
       onBack?.();
       return;
     }
@@ -2005,6 +1993,16 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     unselectedIcon: '--lg-nav-icon-color',
     unselectedLabel: '--lg-nav-label-color',
   };
+  const contextActions = createContextActions(nav, COLOR_VARIABLES, {
+    items,
+    closePopovers: () => {
+      hideMore();
+      for (const popover of popovers.values()) popover.hide();
+    },
+    markCurrent,
+    sync: () => sync(true),
+    lastMore: () => allMore().at(-1)?.button,
+  });
   const originalColors = new Map(
     Object.values(COLOR_VARIABLES).map((variable) => [
       variable,
@@ -2029,160 +2027,6 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     clearInk();
     startInk();
     paintInk();
-  }
-
-  // ---- Transparency and adaptive contrast ----
-
-  let transparency: number | undefined;
-  let contrast: ContrastOptions | undefined;
-  let backdropSignal: BackdropSignal | undefined;
-  let backdrop: Required<BackdropSignal> = { tone: 'light', busy: false };
-  let appliedTint: number | undefined | null = null;
-  let contrastWatch: AbortController | undefined;
-  let contrastFrame = 0;
-
-  function setTransparency(percentage?: number): void {
-    if (percentage !== undefined && (!Number.isFinite(percentage) || percentage < 0 || percentage > 100)) {
-      throw new RangeError('Navbar transparency must be between 0 and 100.');
-    }
-    transparency = percentage;
-    applyTint();
-  }
-
-  function applyTint(): void {
-    const adaptive = contrast?.adaptiveTint;
-    const busyTint = typeof adaptive === 'object' ? (adaptive.busy ?? 34) : 34;
-    const value = adaptive && backdrop.busy ? Math.min(transparency ?? 60, busyTint) : transparency;
-    if (value === appliedTint) return;
-    appliedTint = value;
-    nav.classList.toggle('lg-navbar--custom-tint', value !== undefined);
-    nav.classList.toggle('lg-navbar--clear', value === 100);
-    refraction?.setTransparency(value);
-    if (value === undefined) nav.style.removeProperty('--lg-nav-tint');
-    else nav.style.setProperty('--lg-nav-tint', String(1 - value / 100));
-  }
-
-  function regions(): Iterable<Element> {
-    const source = contrast?.regions ?? '[data-navbar-backdrop]';
-    return typeof source === 'string' ? document.querySelectorAll(source) : source();
-  }
-
-  function updateContrast(): void {
-    if (!contrast && !backdropSignal) {
-      if (nav.hasAttribute('data-lg-navbar-backdrop')) nav.removeAttribute('data-lg-navbar-backdrop');
-      nav.classList.remove('lg-navbar--busy');
-      backdrop = { tone: 'light', busy: false };
-      applyTint();
-      return;
-    }
-    const detected = contrast ? readBackdrop(nav, regions()) : { tone: 'light' as const, busy: false };
-    backdrop = { tone: backdropSignal?.tone ?? detected.tone, busy: backdropSignal?.busy ?? detected.busy };
-    if (nav.getAttribute('data-lg-navbar-backdrop') !== backdrop.tone)
-      nav.setAttribute('data-lg-navbar-backdrop', backdrop.tone);
-    nav.classList.toggle('lg-navbar--busy', backdrop.busy);
-    applyTint();
-  }
-
-  function scheduleContrast(): void {
-    if (!contrastFrame)
-      contrastFrame = disposer.frame(() => {
-        contrastFrame = 0;
-        updateContrast();
-      });
-  }
-
-  function setContrast(value?: boolean | ContrastOptions): void {
-    contrast = value === true ? {} : value || undefined;
-    nav.classList.toggle('lg-navbar--no-halo', contrast?.halo === false);
-    nav.classList.toggle('lg-navbar--no-glow', contrast?.glow === false);
-    contrastWatch?.abort();
-    contrastWatch = undefined;
-    if (contrast) {
-      contrastWatch = new AbortController();
-      const watch = { passive: true, capture: true, signal: contrastWatch.signal } as const;
-      addEventListener('scroll', scheduleContrast, watch);
-      addEventListener('resize', scheduleContrast, watch);
-    }
-    updateContrast();
-  }
-
-  // ---- Badges ----
-
-  // Badge motion: one spring on the badge's scale.
-  function popBadge(node: HTMLElement, from: number, to: number, onRest?: () => void): void {
-    if (!motionOn('badges')) {
-      onRest?.();
-      return;
-    }
-    const spring = createSpring(
-      from,
-      (value) => {
-        node.style.scale = String(Math.max(0, value));
-      },
-      {
-        response: 0.38,
-        dampingRatio: 0.5,
-        precision: 0.002,
-        onRest: () => {
-          node.style.removeProperty('scale');
-          onRest?.();
-        },
-      },
-    );
-    spring.set(from);
-    spring.to(to);
-  }
-
-  function setBadge(item: NavbarItem, badge: NavbarBadge | null): void {
-    if (!items().includes(item) && !item.closest('.lg-navbar__overflow'))
-      throw new Error('The button does not belong to this navbar.');
-    const existing = badges.get(item);
-    const shown = badge && !('count' in badge && badge.count <= 0) ? badge : null;
-    if (existing) {
-      existing.text.remove();
-      if (existing.describedBy === null) item.removeAttribute('aria-describedby');
-      else item.setAttribute('aria-describedby', existing.describedBy);
-      badges.delete(item);
-      // A badge that stays is updated in place and pulses if it changed; one that goes shrinks away.
-      if (!shown) {
-        const node = existing.badge;
-        popBadge(node, 1, 0, () => node.remove());
-      }
-    }
-    if (shown) {
-      const node = existing?.badge ?? document.createElement('span');
-      const before = node.textContent + (node.dataset.kind ?? '') + (node.dataset.tone ?? '');
-      node.className = 'lg-navbar__badge';
-      node.setAttribute('aria-hidden', 'true');
-      delete node.dataset.tone;
-      const text = document.createElement('span');
-      text.className = 'lg-navbar__sr';
-      text.id = `lg-navbar-badge-${++badgeSequence}`;
-      if ('count' in shown) {
-        const max = shown.max ?? 99;
-        node.dataset.kind = 'count';
-        node.textContent = shown.count > max ? `${max}+` : String(shown.count);
-        text.textContent = shown.label ?? `${shown.count} new`;
-      } else if ('dot' in shown) {
-        node.dataset.kind = 'dot';
-        node.textContent = '';
-        text.textContent = shown.label ?? 'New';
-      } else {
-        node.dataset.kind = 'status';
-        node.dataset.tone = shown.status;
-        node.textContent = '';
-        text.textContent = shown.label;
-      }
-      const describedBy = item.getAttribute('aria-describedby');
-      if (!existing) item.append(node);
-      item.append(text);
-      item.setAttribute('aria-describedby', [describedBy, text.id].filter(Boolean).join(' '));
-      badges.set(item, { badge: node, text, describedBy });
-      if (!existing) popBadge(node, 0, 1);
-      else if (before !== node.textContent + (node.dataset.kind ?? '') + (node.dataset.tone ?? ''))
-        popBadge(node, 1.35, 1);
-    }
-    sync(true);
   }
 
   // ---- Collapsible rows ----
@@ -2374,7 +2218,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   function paintCollapse(remeasure = false): void {
     const progress = Math.min(1, Math.max(0, collapseSpring.value));
     const animating = progress > 0 && progress < 1;
-    const active = Boolean(collapseOptions && multiRowActive() && layout === 'rows' && !context);
+    const active = Boolean(collapseOptions && multiRowActive() && layout === 'rows' && !contextActions.state);
     const last = mainRow();
     const units = active
       ? [
@@ -2689,135 +2533,6 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     stopScroll = watchScrollDirection(value === true ? {} : value, setCompact);
   }
 
-  // ---- Context actions ----
-
-  function showContextActions(nodes: readonly HTMLElement[], contextOptions: ContextActionsOptions = {}): void {
-    if (context) hideContextActions(false);
-    hideMore();
-    for (const popover of popovers.values()) popover.hide();
-    const focusInside = nav.contains(document.activeElement);
-    const placement = contextOptions.placement ?? 'replace';
-    const target = placement instanceof HTMLElement ? placement : undefined;
-    if (target && (!nav.contains(target) || target === nav))
-      throw new Error('The placement must be a section or item of this navbar.');
-    // An item as the target takes the actions in its own section; anything else gets them in pills.
-    const loose = target !== undefined && !target.hasAttribute('data-navbar-section');
-    const restore = nodes.map((node) => ({ node, className: node.className, style: node.getAttribute('style') }));
-    let back: HTMLButtonElement | undefined;
-    if (contextOptions.back) {
-      const settings = contextOptions.back === true ? {} : contextOptions.back;
-      back = document.createElement('button');
-      back.type = 'button';
-      back.className = 'lg-navbar__back';
-      for (const name of ['data-navbar-action', 'data-navbar-generated', 'data-navbar-overflow'])
-        back.setAttribute(name, name === 'data-navbar-overflow' ? 'never' : '');
-      const icon = settings.icon ? (settings.icon.cloneNode(true) as Element) : svgIcon('M15 5l-7 7 7 7');
-      icon.setAttribute('data-navbar-icon', '');
-      icon.setAttribute('aria-hidden', 'true');
-      const text = document.createElement('span');
-      text.setAttribute('data-navbar-label', '');
-      text.textContent = settings.label ?? 'Back';
-      back.append(icon, text);
-    }
-    // Wrap runs of loose items into pills of their own; your sections are used as they are.
-    const inserted: HTMLElement[] = [];
-    const queue: HTMLElement[] = back ? [back, ...nodes] : [...nodes];
-    if (loose) inserted.push(...queue);
-    else {
-      let run: HTMLElement | undefined;
-      for (const node of queue) {
-        if (node.hasAttribute('data-navbar-section')) {
-          run = undefined;
-          inserted.push(node);
-          continue;
-        }
-        if (!run) {
-          run = document.createElement('div');
-          run.setAttribute('data-navbar-section', '');
-          run.setAttribute('data-navbar-generated', '');
-          inserted.push(run);
-        }
-        run.append(node);
-      }
-    }
-    const look = contextOptions.look;
-    for (const node of inserted) {
-      node.setAttribute(CONTEXT, '');
-      if (contextOptions.className) node.classList.add(...contextOptions.className.split(/\s+/).filter(Boolean));
-      if (!look) continue;
-      for (const [key, variable] of Object.entries(COLOR_VARIABLES) as [keyof NavbarColors, string][]) {
-        const value = look.colors?.[key];
-        if (value) node.style.setProperty(variable, value);
-      }
-      if (look.background !== undefined && CSS.supports('background', look.background))
-        node.style.setProperty('--lg-nav-background', look.background);
-      if (look.transparency !== undefined)
-        node.style.setProperty('--lg-nav-tint', String(1 - Math.min(100, Math.max(0, look.transparency)) / 100));
-    }
-    context = {
-      inserted,
-      restore,
-      back,
-      replace: placement === 'replace',
-      hidden: target,
-      onBack: contextOptions.onBack,
-      current: items().find((button) => button.getAttribute('aria-current') === 'page'),
-      label: nav.getAttribute('aria-label'),
-    };
-    if (placement === 'replace') {
-      nav.append(...inserted);
-      nav.classList.add('lg-navbar--context');
-      // Rows belong to the hidden navigation; the actions lay out as one row.
-      nav.classList.remove('lg-navbar--multirow', 'lg-navbar--wrap', 'lg-navbar--split');
-      nav.style.removeProperty('--_lg-rows-width');
-    } else if (placement === 'start') {
-      const first = [...nav.children].find((child) => child.matches('[data-navbar-section], button, a[href]'));
-      for (const node of inserted) nav.insertBefore(node, first ?? null);
-    } else if (placement === 'end') {
-      nav.append(...inserted);
-    } else if (target) {
-      target.after(...inserted);
-      target.setAttribute('data-navbar-context-hidden', '');
-    }
-    if (contextOptions.label) nav.setAttribute('aria-label', contextOptions.label);
-    sync(true);
-    if (focusInside)
-      (back ?? items().find((item) => inserted.some((node) => node.contains(item)) && isAvailable(item)))?.focus({
-        preventScroll: true,
-      });
-  }
-
-  function hideContextActions(focus = true): void {
-    if (!context) return;
-    const { inserted, restore, current, label, hidden, back } = context;
-    const focusInside = inserted.some((node) => node.contains(document.activeElement));
-    for (const node of inserted) {
-      for (const marked of node.querySelectorAll('[aria-current="page"]')) marked.removeAttribute('aria-current');
-      if (node.getAttribute('aria-current') === 'page') node.removeAttribute('aria-current');
-      node.remove();
-    }
-    back?.remove();
-    // Your nodes come back exactly as they were, outside any pill the bar made for them.
-    for (const { node, className, style } of restore) {
-      node.remove();
-      node.removeAttribute(CONTEXT);
-      node.className = className;
-      if (style === null) node.removeAttribute('style');
-      else node.setAttribute('style', style);
-    }
-    hidden?.removeAttribute('data-navbar-context-hidden');
-    context = undefined;
-    nav.classList.remove('lg-navbar--context');
-    if (label === null) nav.removeAttribute('aria-label');
-    else nav.setAttribute('aria-label', label);
-    if (current?.isConnected) markCurrent(current);
-    sync(true);
-    if (focus && focusInside)
-      (current && isAvailable(current) ? current : (allMore().at(-1)?.button ?? items().find(isAvailable)))?.focus({
-        preventScroll: true,
-      });
-  }
-
   // ---- Magnify: each icon's amount (0..1) is its own spring, so passing over it rises and settles smoothly ----
 
   let magnify: Required<NavbarMagnifyOptions> | undefined;
@@ -3007,7 +2722,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   nav.classList.toggle('lg-navbar--compact', compact);
   nav.classList.toggle('lg-navbar--no-labels', !(options.labels ?? true));
   setBackground(options.background);
-  setTransparency(options.transparency);
+  tint.setTransparency(options.transparency);
   setColors(options.colors);
   const stopHoverNavigation =
     options.hoverNavigation &&
@@ -3029,7 +2744,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       signal,
     );
   setLens(options.lens);
-  setContrast(options.contrast);
+  tint.setContrast(options.contrast);
   setScrollCompact(options.scrollCompact);
   setMagnify(options.magnify);
   setAnimations(options.animations);
@@ -3055,7 +2770,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     setLabels,
     setEqualWidth,
     setBackground,
-    setTransparency,
+    setTransparency: tint.setTransparency,
     refreshRefraction: () => refraction?.refreshSources(),
     setColors,
     refreshColors,
@@ -3099,21 +2814,23 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     closeOverflow() {
       hideMore();
     },
-    setBadge,
+    setBadge(item, badge) {
+      if (!items().includes(item) && !item.closest('.lg-navbar__overflow'))
+        throw new Error('The button does not belong to this navbar.');
+      badges.set(item, badge);
+      sync(true);
+    },
     setCompact,
     setScrollCompact,
     get compact() {
       return compact;
     },
-    setContrast,
-    setBackdrop(next) {
-      backdropSignal = next && (next.tone !== undefined || next.busy !== undefined) ? { ...next } : undefined;
-      updateContrast();
-    },
-    showContextActions,
-    hideContextActions: () => hideContextActions(),
+    setContrast: tint.setContrast,
+    setBackdrop: tint.setBackdrop,
+    showContextActions: (nodes, settings) => contextActions.show(nodes, settings),
+    hideContextActions: () => contextActions.hide(),
     get contextActive() {
-      return context !== undefined;
+      return contextActions.state !== undefined;
     },
     setMagnify,
     setAnimations,
@@ -3142,17 +2859,9 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     },
     destroy() {
       if (stopHoverNavigation) stopHoverNavigation();
-      hideContextActions(false);
+      contextActions.hide(false);
       for (const popover of [...popovers.values()]) popover.destroy();
-      for (const item of [...badges.keys()]) {
-        const entry = badges.get(item);
-        if (!entry) continue;
-        entry.badge.remove();
-        entry.text.remove();
-        if (entry.describedBy === null) item.removeAttribute('aria-describedby');
-        else item.setAttribute('aria-describedby', entry.describedBy);
-      }
-      badges.clear();
+      badges.destroy();
       clearInk();
       for (const item of glides.keys()) stopGlide(item);
       for (const item of exits.keys()) clearExit(item);
@@ -3174,7 +2883,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       nav.style.removeProperty('--_lg-collapse-progress');
       collapsePressSpring.stop();
       unmountCollapseToggle();
-      contrastWatch?.abort();
+      tint.destroy();
       stopScroll?.();
       compactSpring.stop();
       for (const label of compactLabels) {
