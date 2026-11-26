@@ -220,6 +220,8 @@ Every engine gets the same layout, lens, gestures and overflow. Only how the gla
 - [src/navbar.ts](src/navbar.ts) — the mounted navbar: selection, swipe gestures, layout, overflow, collapse, keyed updates, and `destroy()`.
 - [src/types.ts](src/types.ts) — public option, method, and item types.
 - [src/dom.ts](src/dom.ts), [src/limits.ts](src/limits.ts), [src/update.ts](src/update.ts), [src/view-transition.ts](src/view-transition.ts), and [src/lifecycle.ts](src/lifecycle.ts) — markup helpers, visible-item limits, keyed-update matching, View Transition support, and the cleanup helper `destroy()` runs.
+- [src/keyboard.ts](src/keyboard.ts), [src/badges.ts](src/badges.ts), [src/backdrop-tint.ts](src/backdrop-tint.ts), and [src/context-actions.ts](src/context-actions.ts) — arrow keys and reordering, badges, transparency and adaptive contrast, and context actions.
+- [src/react.ts](src/react.ts) and [src/vue.ts](src/vue.ts) — the optional framework bindings.
 - [src/navbar.css](src/navbar.css) — layout, glass styling, custom properties, and accessibility media queries.
 - [src/popover.ts](src/popover.ts) — shared anchored popovers, including the surface used by the More menu.
 - [src/spring.ts](src/spring.ts) — spring motion and rubber-band math.
