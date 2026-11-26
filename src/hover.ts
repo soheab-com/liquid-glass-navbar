@@ -15,7 +15,19 @@ export interface NavbarHoverOptions {
   onPreviewEnd?: () => void;
 }
 
-type HoverBar = { itemAt: (target: Element | null) => NavbarItem | undefined; enabled: () => boolean };
+/** How a grouped bar shows a drag that started in another bar of its group. */
+export interface HoverHandoff {
+  /** Highlight `item` under the other bar's pointer, or stop when undefined. */
+  handoff(item: NavbarItem | undefined): void;
+  /** The drag that started here is over another bar (true) or back (false). */
+  away(away: boolean): void;
+}
+
+type HoverBar = {
+  itemAt: (target: Element | null) => NavbarItem | undefined;
+  enabled: () => boolean;
+  hooks: HoverHandoff | undefined;
+};
 const groups = new Map<string, Set<HoverBar>>();
 
 export function bindHoverNavigation(
@@ -24,9 +36,10 @@ export function bindHoverNavigation(
   itemAt: (element: Element | null) => NavbarItem | undefined,
   enabled: () => boolean,
   signal: AbortSignal,
+  hooks?: HoverHandoff,
 ): () => void {
   const group = options.group ? (groups.get(options.group) ?? new Set<HoverBar>()) : undefined;
-  const bar = { itemAt, enabled };
+  const bar: HoverBar = { itemAt, enabled, hooks };
   if (group && options.group) {
     if (options.swipe !== false) nav.classList.add('lg-navbar--hover-group');
     group.add(bar);
@@ -53,7 +66,21 @@ export function bindHoverNavigation(
   let x = 0;
   let y = 0;
 
+  // While a drag from this bar is over another bar of the group, that bar shows where the pointer is.
+  let handedTo: HoverBar | undefined;
+  function handOff(next: NavbarItem | undefined): void {
+    const owner =
+      next && group && !itemAt(next)
+        ? [...group].find((other) => other !== bar && other.enabled() && other.itemAt(next))
+        : undefined;
+    if (handedTo && handedTo !== owner) handedTo.hooks?.handoff(undefined);
+    if (owner) owner.hooks?.handoff(next);
+    if (Boolean(owner) !== Boolean(handedTo)) hooks?.away(Boolean(owner));
+    handedTo = owner;
+  }
+
   function end(restore: boolean): void {
+    handOff(undefined);
     clearTimeout(pending);
     item = undefined;
     const previous = origin;
@@ -117,6 +144,7 @@ export function bindHoverNavigation(
       end(true);
       return;
     }
+    if (dragging) handOff(next);
     if (item === next) return;
     clearTimeout(pending);
     item = next;
@@ -177,10 +205,10 @@ export function bindHoverNavigation(
       start = undefined;
       if (target && !own && initial && Math.hypot(event.clientX - initial.x, event.clientY - initial.y) >= 8) {
         finger = undefined;
-        end(false);
         event.stopImmediatePropagation();
         window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: event.pointerId }));
         target.click();
+        end(false);
       } else if (event.pointerType !== 'touch') {
         end(!own);
       }
@@ -237,11 +265,11 @@ export function bindHoverNavigation(
       const own = itemAt(point);
       const target = enabled() ? hit(point, true) : undefined;
       if (target && !own && Math.hypot(touch.clientX - startTouch.x, touch.clientY - startTouch.y) >= 8) {
-        end(false);
         if (touchPointer !== undefined)
           window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: touchPointer }));
         if (event.cancelable) event.preventDefault();
         target.click();
+        end(false);
       } else {
         end(!own);
       }

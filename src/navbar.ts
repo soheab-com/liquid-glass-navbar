@@ -1668,6 +1668,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     if (dragging) releaseVelocity = { value: velocityOf(samples), at: performance.now() };
     samples = [];
     nav.classList.remove('lg-navbar--pressed', 'lg-navbar--dragging', 'lg-navbar--lens-away');
+    handedOff = false;
     items().forEach((button) => button.classList.remove('lg-navbar__preview'));
     if (nav.hasPointerCapture(event.pointerId)) nav.releasePointerCapture(event.pointerId);
     if (dragging) suppressClick = true;
@@ -1747,6 +1748,8 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
         release();
         nav.classList.add('lg-navbar--dragging');
       }
+      // Over another bar of the hover group: that bar shows the pointer, and this one steps back.
+      if (handedOff) return;
       if (gesture.free) return dragFree(event, buttons);
       const position = eventPosition(event);
       const target = closest(buttons, position);
@@ -2724,6 +2727,39 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
   setBackground(options.background);
   tint.setTransparency(options.transparency);
   setColors(options.colors);
+  // ---- Hover group hand-off ----
+
+  // A drag that started in another bar of the hover group shows here: the item under the pointer gets the preview
+  // look and the lens glides to it. When the drag leaves, the lens returns to the current tab.
+  let handedOff = false;
+  let remote: NavbarItem | undefined;
+  function showHandoff(item: NavbarItem | undefined): void {
+    if (item === remote) return;
+    remote?.classList.remove('lg-navbar__preview');
+    remote = item;
+    if (item) {
+      nav.classList.add('lg-navbar--dragging');
+      startInk();
+      placeLens(item);
+      spring.to(measure(item).start);
+      item.classList.add('lg-navbar__preview');
+    } else {
+      nav.classList.remove('lg-navbar--dragging');
+      clearInk();
+      sync();
+    }
+  }
+  /** The drag that started in this bar is over another bar of the group, so this bar's lens steps back. */
+  function stepAway(away: boolean): void {
+    handedOff = away;
+    nav.classList.toggle('lg-navbar--lens-away', away);
+    if (away) {
+      for (const item of items()) item.classList.remove('lg-navbar__preview');
+      // The colour the lens paints onto the tabs under it goes with it.
+      clearInk();
+    } else if (gesture?.dragging) startInk();
+  }
+
   const stopHoverNavigation =
     options.hoverNavigation &&
     bindHoverNavigation(
@@ -2742,6 +2778,7 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
       },
       () => enabled() && !reorderMode,
       signal,
+      { handoff: showHandoff, away: stepAway },
     );
   setLens(options.lens);
   tint.setContrast(options.contrast);
