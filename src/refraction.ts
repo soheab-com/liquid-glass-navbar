@@ -276,7 +276,8 @@ export function mountRefraction(nav: HTMLElement, mode: RefractionMode, chosen?:
     const clear = transparency === 100;
 
     for (const [target, layer] of layers) {
-      if (!active) {
+      // Copy mode with nothing marked to copy has nothing to bend: keep the frosted glass rather than a sharp, flat one.
+      if (!active || (layer.copy && !clones.get(layer.copy)?.length)) {
         target.style.removeProperty(filterProperty);
         target.style.removeProperty(blurProperty);
         if (layer.copy) lensOf(layer.copy).style.removeProperty('filter');
@@ -507,7 +508,8 @@ export function mountRefraction(nav: HTMLElement, mode: RefractionMode, chosen?:
     /** Copy the source elements again, after their content changed. */
     refreshSources(): void {
       for (const layer of layers.values()) if (layer.copy) fillCopy(layer.copy);
-      scheduleAlign();
+      // Sources appearing or disappearing switch between bent and frosted glass.
+      schedule();
     },
     setTransparency(value?: number): void {
       transparency = value;
