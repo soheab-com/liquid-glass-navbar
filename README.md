@@ -22,6 +22,8 @@ Or install a tagged version straight from GitHub:
 npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v0.13.0'
 ```
 
+It adds about 26 kB of JavaScript and 7 kB of CSS, minified and gzipped, with no dependencies. CI fails if either grows past its budget (`npm run size`).
+
 The package ships compiled ES modules with TypeScript declarations, so the JavaScript works without a bundler. Importing it is safe during server rendering: it only touches the DOM when you mount a navbar. You still need to load the stylesheet, either through your bundler (`import '@soheab-com/liquid-glass-navbar/navbar.css'`) or with a `<link>`:
 
 ```html

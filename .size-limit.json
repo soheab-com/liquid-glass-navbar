@@ -1,0 +1,16 @@
+[
+  {
+    "name": "JavaScript (dist/index.js)",
+    "path": "dist/index.js",
+    "import": "{ mountLiquidGlassNavbar }",
+    "gzip": true,
+    "limit": "30 kB"
+  },
+  {
+    "name": "Stylesheet (dist/navbar.css, unminified)",
+    "path": "dist/navbar.css",
+    "rolldown": false,
+    "gzip": true,
+    "limit": "8 kB"
+  }
+]

@@ -54,7 +54,8 @@
     "perf": "node scripts/perf.mjs",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "check:links": "node scripts/check-links.mjs"
+    "check:links": "node scripts/check-links.mjs",
+    "size": "size-limit"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.9",
