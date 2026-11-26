@@ -72,13 +72,13 @@
     "test:e2e": "playwright test",
     "build": "node scripts/build.mjs",
     "test:ssr": "node tests/ssr.mjs",
-    "prepack": "npm run build",
     "perf": "node scripts/perf.mjs",
     "lint": "biome check .",
     "format": "biome format --write .",
     "check:links": "node scripts/check-links.mjs",
     "size": "size-limit",
-    "test:visual": "playwright test -c playwright.visual.config.ts"
+    "test:visual": "playwright test -c playwright.visual.config.ts",
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.9",
