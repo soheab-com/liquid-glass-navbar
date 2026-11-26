@@ -22,6 +22,8 @@ Supply a nav element containing buttons or `<a href="…">` items. Mark the star
 | Preview sections on hover or swipe | `hoverNavigation`, `NavbarHoverOptions`, and `data-navbar-no-hover` |
 | Style the lens | `lens`, `setLens(options)`, `NavbarLensOptions`, and `NavbarLensStyle` |
 | Refresh inherited colors | `setColors(colors)`, `refreshColors()`, `ContrastOptions.halo` and `ContrastOptions.glow` |
+| Keyboard | `keyboardNavigation`, `reorderable`, `reorderAnnouncement`, and `--lg-nav-focus` |
+| Use from React or Vue | `useLiquidGlassNavbar` from `@soheab-com/liquid-glass-navbar/react` or `/vue` |
 | Unmount | Call `navbar.destroy()` when disposing of the instance |
 | Configure markup or styling | [HTML attributes](https://soheab.com/navbar-builder/docs/#attributes), [CSS variables](https://soheab.com/navbar-builder/docs/#css), and [src/navbar.css](../src/navbar.css) |
 | See full examples | [Configurable demo](../examples/demo.ts) and [feature examples](../examples/features.ts) |

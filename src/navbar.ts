@@ -18,6 +18,7 @@ import {
   VERTICAL_ELLIPSIS,
 } from './dom.js';
 import { bindHoverNavigation } from './hover.js';
+import { bindKeyboard } from './keyboard.js';
 import { createDisposer } from './lifecycle.js';
 import { parseSectionLimit, resolveVisibleLimit as resolveLimit } from './limits.js';
 import { type AnchoredPopover, createAnchoredPopover } from './popover.js';
@@ -1904,26 +1905,13 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
     },
     { signal },
   );
-  nav.addEventListener(
-    'keydown',
-    (event) => {
-      if (!options.reorderable || !event.altKey) return;
-      const button = buttonAt(event);
-      if (!button) return;
-      const direction =
-        event.key === (vertical() ? 'ArrowUp' : 'ArrowLeft')
-          ? -1
-          : event.key === (vertical() ? 'ArrowDown' : 'ArrowRight')
-            ? 1
-            : 0;
-      const available = peers(button).filter((peer) => isAvailable(peer) && !isMore(peer));
-      const target = available[available.indexOf(button) + direction];
-      if (!direction || !target) return;
-      event.preventDefault();
-      moveTo(button, target);
-    },
-    { signal },
-  );
+
+  bindKeyboard(nav, signal, disposer, options, {
+    vertical,
+    buttonAt,
+    reorderPeers: (button) => peers(button).filter((peer) => isAvailable(peer) && !isMore(peer)),
+    moveTo,
+  });
 
   function setPosition(position?: NavbarPosition): void {
     placement = position;

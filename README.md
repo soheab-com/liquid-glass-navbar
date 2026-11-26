@@ -194,10 +194,12 @@ const navbar = useLiquidGlassNavbar(nav, () => ({ position: 'bottom', onSelect: 
 
 Options are read when the bar mounts. Callbacks always call the latest version, so they can use current props and state. To change anything else later, call methods on the returned instance (`navbar.setColors(…)`, `navbar.update(…)`); it is `null` (React) or `undefined` (Vue) until the bar has mounted. Let the navbar own the selection: re-rendering the `<nav>`'s children from React or Vue state would fight it, so use `navbar.select()` or `navbar.update()` to change them.
 
-## Right-to-left and accessibility settings
+## Keyboard, right-to-left and accessibility settings
 
-- **Right-to-left.** In a `dir="rtl"` page or nav, tabs run right to left, a swipe selects the tab under the finger, the rubber band stretches past either visual end, and More sits at the visual end.
-- **Reduce Motion** swaps springs for immediate changes. **Reduce Transparency** turns off blur and refraction.
+- **Keyboard.** Tab reaches every item; Enter or Space activates it. The arrow keys move focus between the bar's items, More and the collapse chevron in screen order, Up and Down move between rows (or along a vertical bar), and Home and End jump to the first and last. Inside an open More menu, Up and Down move between its items and Escape closes it, returning focus to More. Arrow keys only move focus; they never select. Pass `keyboardNavigation: false` to turn them off. Focused items get a ring in the accent colour; set `--lg-nav-focus` to change it.
+- **Reordering.** With `reorderable: true`, Alt+Arrow moves the focused item and a polite live region announces its new position ("Moved Home to position 2 of 5"). Pass `reorderAnnouncement(item, position, count)` to translate it.
+- **Right-to-left.** In a `dir="rtl"` page or nav, tabs run right to left, a swipe selects the tab under the finger, the rubber band stretches past either visual end, More sits at the visual end, and arrow keys and Alt+Arrow follow the screen.
+- **Reduce Motion** swaps springs for immediate changes. Springs also settle straight away when the page is hidden. **Reduce Transparency** turns off blur and refraction.
 - **Increase Contrast** (`prefers-contrast: more`) makes the surface nearly opaque, draws a solid rim and a thicker lens ring, uses full-strength labels, and underlines the current tab's label.
 - **Forced colours** (Windows High Contrast and similar) draws the bar with system colours: a `CanvasText` outline, a `Highlight` lens and `HighlightText` for the selected item.
 

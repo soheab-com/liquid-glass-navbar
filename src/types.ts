@@ -188,6 +188,14 @@ export interface LiquidGlassNavbarOptions {
   viewTransitionName?: string;
   /** Log a warning for multiple current items. Enable this in development builds. */
   warnOnMultipleCurrent?: boolean;
+  /**
+   * Arrow keys move focus between the bar's items, More and the collapse chevron, in screen order (rows with
+   * Up and Down); Home and End jump to the first and last. Inside an open More menu, Up and Down move between its
+   * items. Enter or Space still activates. Defaults to true.
+   */
+  keyboardNavigation?: boolean;
+  /** Text announced to screen readers after Alt+Arrow moves an item. Defaults to English. */
+  reorderAnnouncement?: (item: NavbarItem, position: number, count: number) => string;
   /** Reports changes to the navbar's border box, including spring frames. */
   onResize?: (size: NavbarSize) => void;
   onCompactChange?: (compact: boolean) => void;
