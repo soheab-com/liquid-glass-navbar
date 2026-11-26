@@ -123,11 +123,24 @@ interface RefractionLayer {
 /** How the glass bends: the live backdrop, or a copy of the marked backdrop elements. */
 export type RefractionMode = 'backdrop' | 'copy';
 
+/**
+ * Whether this engine draws SVG filters inside `backdrop-filter`. The only engine check in the package: it can't be
+ * feature-detected, because WebKit and Gecko both report `CSS.supports('backdrop-filter', 'url(#id)')` and then
+ * draw nothing (WebKit bug 245510, Gecko bug 1578503), and reading back rendered backdrop pixels isn't possible from
+ * script. Only Blink renders them. `navigator.userAgentData` is a Blink-only API, so it is checked first; the
+ * user-agent string covers Blink builds without it. iOS browsers are WebKit and don't send `Chrome/`.
+ */
+function rendersBackdropSvgFilters(): boolean {
+  const data = (navigator as Navigator & { userAgentData?: { brands?: { brand: string }[] } }).userAgentData;
+  if (data?.brands?.some(({ brand }) => brand === 'Chromium')) return true;
+  return /Chrome\//.test(navigator.userAgent);
+}
+
 export function refractionMode(): RefractionMode | undefined {
-  // Only Chromium renders SVG filters in backdrop-filter. WebKit parses the syntax and draws nothing (WebKit bug
-  // 245510), but it does render SVG filters in plain `filter`, so Safari bends a copy of the backdrop instead.
-  if (/Chrome\//.test(navigator.userAgent) && CSS.supports('backdrop-filter', 'url(#lg-navbar-test)')) return 'backdrop';
-  if (/^((?!chrome|chromium|android).)*safari/i.test(navigator.userAgent) && CSS.supports('filter', 'url(#lg-navbar-test)')) return 'copy';
+  // Blink bends the live backdrop through backdrop-filter. Every engine that renders SVG filters in plain `filter`
+  // (WebKit and Gecko) bends a copy of the marked backdrop instead.
+  if (CSS.supports('backdrop-filter', 'url(#lg-navbar-test)') && rendersBackdropSvgFilters()) return 'backdrop';
+  if (CSS.supports('filter', 'url(#lg-navbar-test)')) return 'copy';
   return undefined;
 }
 
