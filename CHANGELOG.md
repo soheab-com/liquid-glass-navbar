@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-26
+
+### Fixed
+
+- Dragging from one bar onto another bar of the same `hoverNavigation.group` now shows where you are: the bar under the pointer highlights the item and moves its lens there, and the bar the drag started in steps its lens back until the pointer returns.
+- Installing from a Git tag builds `dist/`, so `npm install 'git+https://github.com/soheab-com/liquid-glass-navbar.git#v1.0.1'` works again.
+
 ## [1.0.0] - 2026-11-26
 
 The first stable release, and the first published to npm.
@@ -286,7 +293,8 @@ All new behavior is opt-in; the single-row bar is unchanged by default.
 - Colors come from CSS variables (`--lg-nav-accent`, `--lg-nav-muted`, `--lg-nav-surface` and friends), with light and dark looks in the examples.
 - Respects Reduce Motion and Reduce Transparency.
 
-[Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/soheab-com/liquid-glass-navbar/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.12.0...v1.0.0
 [0.12.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.11.2...v0.12.0
 [0.11.2]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.11.1...v0.11.2
