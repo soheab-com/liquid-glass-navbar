@@ -1,6 +1,6 @@
 {
   "name": "@soheab-com/liquid-glass-navbar",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "An iOS-style Liquid Glass tab bar in plain TypeScript and CSS, with a sliding lens, swipe gestures and overflow.",
   "license": "MPL-2.0",
   "author": "Soheab",

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-28
+
+### Fixed
+
+- After `update()`, the collapse toggle and More stay after the items of their section. Rebuilt items were appended behind them, so switching pages could put Hide in front of the section's own items.
+
 ## [1.0.1] - 2026-11-26
 
 ### Fixed
@@ -293,7 +299,8 @@ All new behavior is opt-in; the single-row bar is unchanged by default.
 - Colors come from CSS variables (`--lg-nav-accent`, `--lg-nav-muted`, `--lg-nav-surface` and friends), with light and dark looks in the examples.
 - Respects Reduce Motion and Reduce Transparency.
 
-[Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/soheab-com/liquid-glass-navbar/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/soheab-com/liquid-glass-navbar/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/soheab-com/liquid-glass-navbar/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.12.0...v1.0.0
 [0.12.0]: https://github.com/soheab-com/liquid-glass-navbar/compare/v0.11.2...v0.12.0
