@@ -1317,9 +1317,11 @@ export function mountLiquidGlassNavbar(nav: HTMLElement, options: LiquidGlassNav
           if (value && !reused.style.getPropertyValue(property)) reused.style.setProperty(property, value);
         }
       }
+      // Generated controls (the collapse toggle, More) stay after the section's own items.
+      const controls = section === incoming ? null : section.querySelector(':scope > [data-navbar-generated]');
       for (const item of buttonsIn(incoming)) {
         const next = reconcileItem(item);
-        if (section !== incoming) section.append(next);
+        if (section !== incoming) section.insertBefore(next, controls);
         else if (next !== item) item.replaceWith(next);
       }
       nav.append(section);

@@ -54,3 +54,29 @@ test('catalog adoption scenarios (self-checking page)', async ({ page }) => {
   await expect(page.locator('#result')).toHaveAttribute('data-passed', /true|false/, { timeout: 80_000 });
   expect(await page.locator('#result').evaluate((element) => (element as HTMLOutputElement).value)).toMatch(/^PASS/);
 });
+
+test('update() keeps the collapse toggle and More after the items of their section', async ({ page }) => {
+  const overflowing = `${rows}<div data-navbar-section data-navbar-row="1" data-navbar-max-visible="0">${tab('Settings')}</div>`;
+  await mount(page, overflowing, { layout: 'rows', collapsible: true, overflow: {} });
+  const order = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('#nav [data-navbar-row="2"] > :is(button, a)')]
+        .filter((item) => !(item as HTMLElement).hidden)
+        .map((item) =>
+          item.classList.contains('lg-navbar__collapse-toggle')
+            ? 'toggle'
+            : item.hasAttribute('data-navbar-generated')
+              ? 'more'
+              : item.textContent?.trim(),
+        ),
+    );
+  expect(await order()).toEqual(['Home', 'Search', 'toggle', 'more']);
+  await page.evaluate((markup) => {
+    const next = document.createElement('nav');
+    next.innerHTML = markup
+      .replace('aria-current="page"', '')
+      .replace('data-navbar-key="search"', 'data-navbar-key="search" aria-current="page"');
+    (window as unknown as { bar: { update(nav: HTMLElement): void } }).bar.update(next);
+  }, overflowing);
+  await expect.poll(order).toEqual(['Home', 'Search', 'toggle', 'more']);
+});
